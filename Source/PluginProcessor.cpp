@@ -265,6 +265,25 @@ void AudioPluginAudioProcessor::generateWavetable(int oscIndex, WaveformType typ
             }
             break;
         }
+        
+        case WaveformType::Pulse25:
+        {
+            for (int i = 0; i < wavetableSize; ++i)
+            {
+                samples[i] = (i < wavetableSize / 4) ? 1.0f : -1.0f;
+            }
+            break;
+        }
+        
+        case WaveformType::Pulse10:
+        {
+            for (int i = 0; i < wavetableSize; ++i)
+            {
+                samples[i] = (i < wavetableSize / 10) ? 1.0f : -1.0f;
+            }
+            break;
+        }
+        
     }
 }
 

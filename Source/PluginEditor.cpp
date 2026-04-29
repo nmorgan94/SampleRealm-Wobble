@@ -9,20 +9,26 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     
     osc1 = std::make_unique<Oscillator>(
         processorRef.apvts, "osc1_enable", "osc1_waveform",
-        "Oscillator 1", processorRef.getWavetable(0));
+        "OSC 1", processorRef.getWavetable(0));
     addAndMakeVisible(osc1.get());
     
     osc2 = std::make_unique<Oscillator>(
         processorRef.apvts, "osc2_enable", "osc2_waveform",
-        "Oscillator 2", processorRef.getWavetable(1));
+        "OSC 2", processorRef.getWavetable(1));
     addAndMakeVisible(osc2.get());
     
     osc3 = std::make_unique<Oscillator>(
         processorRef.apvts, "osc3_enable", "osc3_waveform",
-        "Oscillator 3", processorRef.getWavetable(2));
+        "OSC 3", processorRef.getWavetable(2));
     addAndMakeVisible(osc3.get());
+    
+    envelopePanel = std::make_unique<EnvelopePanel>();
+    addAndMakeVisible(envelopePanel.get());
+    
+    lfoPanel = std::make_unique<LFOPanel>();
+    addAndMakeVisible(lfoPanel.get());
 
-    setSize (800, 500);
+    setSize (900, 600);
 }
 
 AudioPluginAudioProcessorEditor::~AudioPluginAudioProcessorEditor()
@@ -47,22 +53,32 @@ void AudioPluginAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds();
     
+    // Title area
     bounds.removeFromTop(50);
     
-    bounds.reduce(20, 10);
+    // Padding
+    bounds.reduce(10, 5);
     
-    int oscWidth = bounds.getWidth() / 3 - 10;
+    // Split into left (oscillators) and right (modulation) sections
+    auto rightSection = bounds.removeFromRight(350);
+    bounds.removeFromRight(10); // spacing
     
-    auto osc1Area = bounds.removeFromLeft(oscWidth);
-    osc1->setBounds(osc1Area);
+    // Left section: Stack oscillators vertically
+    int oscHeight = (bounds.getHeight() - 20) / 3;
     
-    bounds.removeFromLeft(15);
+    osc1->setBounds(bounds.removeFromTop(oscHeight));
+    bounds.removeFromTop(10);
     
-    auto osc2Area = bounds.removeFromLeft(oscWidth);
-    osc2->setBounds(osc2Area);
+    osc2->setBounds(bounds.removeFromTop(oscHeight));
+    bounds.removeFromTop(10);
     
-    bounds.removeFromLeft(15);
+    osc3->setBounds(bounds);
     
-    auto osc3Area = bounds.removeFromLeft(oscWidth);
-    osc3->setBounds(osc3Area);
+    // Right section: Stack envelope and LFO panels
+    int panelHeight = (rightSection.getHeight() - 10) / 2;
+    
+    envelopePanel->setBounds(rightSection.removeFromTop(panelHeight));
+    rightSection.removeFromTop(10);
+    
+    lfoPanel->setBounds(rightSection);
 }

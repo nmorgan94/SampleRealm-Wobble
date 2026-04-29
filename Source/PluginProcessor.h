@@ -10,7 +10,9 @@ enum class WaveformType
     Sine = 0,
     Saw,
     Square,
-    Triangle
+    Triangle,
+    Pulse25,
+    Pulse10  
 };
 
 //==============================================================================

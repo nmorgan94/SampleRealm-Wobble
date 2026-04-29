@@ -3,6 +3,8 @@
 #include "PluginProcessor.h"
 #include "ui/CustomLookAndFeel.h"
 #include "ui/Oscillator.h"
+#include "ui/EnvelopePanel.h"
+#include "ui/LFOPanel.h"
 
 //==============================================================================
 class AudioPluginAudioProcessorEditor final : public juce::AudioProcessorEditor
@@ -19,6 +21,9 @@ private:
     std::unique_ptr<Oscillator> osc1;
     std::unique_ptr<Oscillator> osc2;
     std::unique_ptr<Oscillator> osc3;
+    
+    std::unique_ptr<EnvelopePanel> envelopePanel;
+    std::unique_ptr<LFOPanel> lfoPanel;
     
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

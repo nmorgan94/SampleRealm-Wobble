@@ -4,7 +4,8 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 
 class Oscillator : public juce::Component,
-                   private juce::Timer
+                   private juce::Timer,
+                   private juce::Button::Listener
 {
 public:
     Oscillator(juce::AudioProcessorValueTreeState& apvts,
@@ -15,15 +16,18 @@ public:
         : wavetable(wavetableRef)
     {
         titleLabel.setText(labelText, juce::dontSendNotification);
-        titleLabel.setJustificationType(juce::Justification::centredLeft);
+        titleLabel.setJustificationType(juce::Justification::centred);
         addAndMakeVisible(titleLabel);
         
+        enableButton.addListener(this);
         addAndMakeVisible(enableButton);
         
         waveformSelector.addItem("Sine", 1);
         waveformSelector.addItem("Saw", 2);
         waveformSelector.addItem("Square", 3);
         waveformSelector.addItem("Triangle", 4);
+        waveformSelector.addItem("Pulse 25%", 5);
+        waveformSelector.addItem("Pulse 10%", 6);
         addAndMakeVisible(waveformSelector);
         
         enableAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
@@ -36,45 +40,69 @@ public:
     
     ~Oscillator() override
     {
+        enableButton.removeListener(this);
         stopTimer();
     }
     
     void paint(juce::Graphics& g) override
     {
         auto bounds = getLocalBounds();
-        auto waveformArea = bounds.removeFromTop(150);
-        
-        g.setColour(juce::Colours::black);
-        g.fillRect(waveformArea);
-        
-        g.setColour(juce::Colours::grey);
-        g.drawRect(waveformArea, 2);
 
-        drawWaveform(g, waveformArea.reduced(5));
+        bool isEnabled = enableButton.getToggleState();
+        float alpha = isEnabled ? 1.0f : 0.3f;
+        
+        titleLabel.setAlpha(alpha);
+        waveformSelector.setAlpha(alpha);
+        waveformSelector.setEnabled(isEnabled);
+        
+        // Draw background
+        g.setColour(juce::Colour(0xff1a1a1a));
+        g.fillRoundedRectangle(bounds.toFloat(), 8.0f);
+        
+        // Draw border
+        g.setColour(juce::Colour(0xff2a2a2a));
+        g.drawRoundedRectangle(bounds.toFloat(), 8.0f, 2.0f);
+        
+        auto waveformArea = bounds.reduced(10);
+        waveformArea.removeFromTop(40);
+        
+        // Draw waveform background
+        g.setColour(juce::Colours::black.withAlpha(alpha));
+        g.fillRoundedRectangle(waveformArea.toFloat(), 4.0f);
+        
+        drawWaveform(g, waveformArea.reduced(5), alpha);
     }
     
     void resized() override
     {
-        auto bounds = getLocalBounds();
-        bounds.removeFromTop(150);
-        bounds.removeFromTop(10);
+        auto bounds = getLocalBounds().reduced(10);
         
-        titleLabel.setBounds(bounds.removeFromTop(25));
-        bounds.removeFromTop(5);
+        auto controlBar = bounds.removeFromTop(30);
         
-        enableButton.setBounds(bounds.removeFromTop(30));
-        bounds.removeFromTop(5);
+        enableButton.setBounds(controlBar.removeFromLeft(30));
         
-        waveformSelector.setBounds(bounds.removeFromTop(30));
+        controlBar.removeFromLeft(10); 
+        
+        auto labelWidth = 100;
+        titleLabel.setBounds(controlBar.removeFromLeft(labelWidth));
+        
+        controlBar.removeFromLeft(10); 
+        
+        waveformSelector.setBounds(controlBar);
     }
     
     void timerCallback() override
     {
         repaint();
     }
+    
+    void buttonClicked(juce::Button*) override
+    {
+        repaint(); 
+    }
 
 private:
-    void drawWaveform(juce::Graphics& g, juce::Rectangle<int> bounds)
+    void drawWaveform(juce::Graphics& g, juce::Rectangle<int> bounds, float alpha)
     {
         if (wavetable.getNumSamples() == 0)
             return;
@@ -99,13 +127,15 @@ private:
                 waveformPath.lineTo(x, y);
         }
         
-        g.setColour(juce::Colours::grey.withAlpha(0.3f));
+        // Center line
+        g.setColour(juce::Colours::grey.withAlpha(0.2f * alpha));
         g.drawLine(bounds.getX(), centerY, bounds.getRight(), centerY, 1.0f);
         
-        g.setColour(juce::Colour(0xff00ff41));
+        g.setColour(juce::Colour(0xff00ff41).withAlpha(alpha));
         g.strokePath(waveformPath, juce::PathStrokeType(2.0f));
         
-        g.setColour(juce::Colours::grey.withAlpha(0.2f));
+        // Grid lines
+        g.setColour(juce::Colours::grey.withAlpha(0.1f * alpha));
         for (int i = 1; i < 4; ++i)
         {
             float y = bounds.getY() + (i / 4.0f) * height;
