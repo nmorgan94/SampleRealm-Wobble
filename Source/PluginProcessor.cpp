@@ -93,13 +93,11 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     
     // Generate the initial wavetables for all oscillators
     const juce::String waveformParamIDs[3] = { "osc1_waveform", "osc2_waveform", "osc3_waveform" };
-    const juce::String enableParamIDs[3] = { "osc1_enable", "osc2_enable", "osc3_enable" };
     
     for (int i = 0; i < 3; ++i)
     {
         currentWaveformTypes[i] = static_cast<WaveformType>(
             static_cast<int>(apvts.getRawParameterValue(waveformParamIDs[i])->load()));
-        oscEnabled[i] = apvts.getRawParameterValue(enableParamIDs[i])->load() > 0.5f;
         generateWavetable(i, currentWaveformTypes[i]);
     }
     
@@ -109,7 +107,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     synth.addSound(new WavetableSound());
     
     for (int i = 0; i < 8; ++i)
-        synth.addVoice(new WavetableVoice(wavetables, oscEnabled));
+        synth.addVoice(new WavetableVoice(wavetables, *this));
 }
 
 void AudioPluginAudioProcessor::releaseResources()
@@ -155,26 +153,18 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     // Check if any oscillator settings have changed
     const juce::String waveformParamIDs[3] = { "osc1_waveform", "osc2_waveform", "osc3_waveform" };
-    const juce::String enableParamIDs[3] = { "osc1_enable", "osc2_enable", "osc3_enable" };
-    
-    bool needsUpdate = false;
     
     for (int i = 0; i < 3; ++i)
     {
         auto newWaveformType = static_cast<WaveformType>(
             static_cast<int>(apvts.getRawParameterValue(waveformParamIDs[i])->load()));
-        bool newEnabled = apvts.getRawParameterValue(enableParamIDs[i])->load() > 0.5f;
         
-        if (newWaveformType != currentWaveformTypes[i] || newEnabled != oscEnabled[i])
+        if (newWaveformType != currentWaveformTypes[i])
         {
             currentWaveformTypes[i] = newWaveformType;
-            oscEnabled[i] = newEnabled;
-            needsUpdate = true;
+            generateWavetable(i, newWaveformType);
         }
     }
-    
-    if (needsUpdate)
-        updateWavetables();
 
     buffer.clear();
     

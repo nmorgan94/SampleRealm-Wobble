@@ -8,17 +8,17 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     setLookAndFeel(&customLookAndFeel);
     
     osc1 = std::make_unique<Oscillator>(
-        processorRef.apvts, "osc1_enable", "osc1_waveform",
+        processorRef.apvts, "osc1_enable", "osc1_waveform", "osc1_gain",
         "OSC 1", processorRef.getWavetable(0));
     addAndMakeVisible(osc1.get());
     
     osc2 = std::make_unique<Oscillator>(
-        processorRef.apvts, "osc2_enable", "osc2_waveform",
+        processorRef.apvts, "osc2_enable", "osc2_waveform", "osc2_gain",
         "OSC 2", processorRef.getWavetable(1));
     addAndMakeVisible(osc2.get());
     
     osc3 = std::make_unique<Oscillator>(
-        processorRef.apvts, "osc3_enable", "osc3_waveform",
+        processorRef.apvts, "osc3_enable", "osc3_waveform", "osc3_gain",
         "OSC 3", processorRef.getWavetable(2));
     addAndMakeVisible(osc3.get());
     
@@ -74,11 +74,10 @@ void AudioPluginAudioProcessorEditor::resized()
     
     osc3->setBounds(bounds);
     
-    // Right section: Stack envelope and LFO panels
     int panelHeight = (rightSection.getHeight() - 10) / 2;
     
-    envelopePanel->setBounds(rightSection.removeFromTop(panelHeight));
+    lfoPanel->setBounds(rightSection.removeFromTop(panelHeight));
     rightSection.removeFromTop(10);
     
-    lfoPanel->setBounds(rightSection);
+    envelopePanel->setBounds(rightSection);
 }

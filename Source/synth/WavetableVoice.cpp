@@ -1,10 +1,11 @@
 #include "WavetableVoice.h"
+#include "../PluginProcessor.h"
 
 //==============================================================================
 WavetableVoice::WavetableVoice(const juce::AudioBuffer<float> wavetablesToUse[3],
-                               const bool* oscEnabledStates)
+                               AudioPluginAudioProcessor& processor)
     : wavetables(wavetablesToUse),
-      oscEnabled(oscEnabledStates)
+      owner(processor)
 {
 }
 
@@ -66,15 +67,20 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
         for (int sample = 0; sample < numSamples; ++sample)
         {
             float mixedSample = 0.0f;
-            int enabledCount = 0;
+            float totalGain = 0.0f;
             
-            // Mix all enabled oscillators
             for (int osc = 0; osc < 3; ++osc)
             {
-                if (oscEnabled[osc])
+                juce::String enableParamID = "osc" + juce::String(osc + 1) + "_enable";
+                juce::String gainParamID = "osc" + juce::String(osc + 1) + "_gain";
+                
+                const bool oscEnabled = owner.getBoolParam(enableParamID);
+                const float oscGain = owner.getFloatParam(gainParamID);
+                
+                if (oscEnabled)
                 {
-                    mixedSample += getInterpolatedSample(osc, localPhases[osc]);
-                    enabledCount++;
+                    mixedSample += getInterpolatedSample(osc, localPhases[osc]) * oscGain;
+                    totalGain += oscGain;
                     
                     // Increment phase and wrap
                     localPhases[osc] += phaseIncrement;
@@ -83,19 +89,21 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
                 }
             }
             
-            // Average the oscillators to prevent clipping
-            if (enabledCount > 0)
-                mixedSample /= static_cast<float>(enabledCount);
+            // Normalize by total gain to prevent clipping when multiple oscs are enabled
+            if (totalGain > 0.0f)
+                mixedSample /= totalGain;
             
             // Apply level and add to output
             channelData[sample] += mixedSample * level;
         }
     }
     
-    // Update the phases for next block
     for (int osc = 0; osc < 3; ++osc)
     {
-        if (oscEnabled[osc])
+        juce::String enableParamID = "osc" + juce::String(osc + 1) + "_enable";
+        const bool oscEnabled = owner.getBoolParam(enableParamID);
+        
+        if (oscEnabled)
         {
             currentPhases[osc] += phaseIncrement * numSamples;
             while (currentPhases[osc] >= wavetableSize)

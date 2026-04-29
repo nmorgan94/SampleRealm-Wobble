@@ -2,12 +2,14 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
+class AudioPluginAudioProcessor;
+
 //==============================================================================
 class WavetableVoice : public juce::SynthesiserVoice
 {
 public:
     WavetableVoice(const juce::AudioBuffer<float> wavetablesToUse[3],
-                   const bool* oscEnabledStates);
+                   AudioPluginAudioProcessor& processor);
     
     bool canPlaySound(juce::SynthesiserSound* sound) override;
     
@@ -24,8 +26,8 @@ public:
                         int startSample, int numSamples) override;
 
 private:
-    const juce::AudioBuffer<float>* wavetables; 
-    const bool* oscEnabled; 
+    const juce::AudioBuffer<float>* wavetables;
+    AudioPluginAudioProcessor& owner;
     
     double currentPhases[3] = { 0.0, 0.0, 0.0 };
     double phaseIncrement = 0.0;

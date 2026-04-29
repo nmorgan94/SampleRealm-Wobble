@@ -167,5 +167,59 @@ public:
         auto* tabBar = button.findParentComponentOfClass<juce::TabbedButtonBar>();
         return tabBar->getWidth() / tabBar->getNumTabs();
     }
+    
+    void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height,
+                         float sliderPosProportional, float /*rotaryStartAngle*/, float /*rotaryEndAngle*/,
+                         juce::Slider& slider) override
+    {
+        auto bounds = juce::Rectangle<int>(x, y, width, height).toFloat();
+        auto radius = juce::jmin(bounds.getWidth(), bounds.getHeight()) / 2.0f;
+        auto centerX = bounds.getCentreX();
+        auto centerY = bounds.getCentreY();
+        
+        auto rotaryStartAngle = juce::MathConstants<float>::pi * 1.25f; 
+        auto rotaryEndAngle = juce::MathConstants<float>::pi * 2.75f;   
+        auto angle = rotaryStartAngle + sliderPosProportional * (rotaryEndAngle - rotaryStartAngle);
+        
+        auto neonGreen = juce::Colour(0xff00ff41);
+        auto trackColor = juce::Colour(0xff3a3a3a);
+        
+        // Draw background circle
+        g.setColour(juce::Colour(0xff2a2a2a));
+        g.fillEllipse(bounds.reduced(2.0f));
+        
+        // Draw track
+        auto arcRadius = radius - 5.0f;
+        auto lineThickness = 3.0f;
+        
+        juce::Path backgroundArc;
+        backgroundArc.addCentredArc(centerX, centerY, arcRadius, arcRadius,
+                                    0.0f, rotaryStartAngle, rotaryEndAngle, true);
+        g.setColour(trackColor);
+        g.strokePath(backgroundArc, juce::PathStrokeType(lineThickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        
+        // Draw value arc
+        if (sliderPosProportional > 0.0f)
+        {
+            juce::Path valueArc;
+            valueArc.addCentredArc(centerX, centerY, arcRadius, arcRadius,
+                                   0.0f, rotaryStartAngle, angle, true);
+            g.setColour(slider.isEnabled() ? neonGreen : juce::Colour(0xff666666));
+            g.strokePath(valueArc, juce::PathStrokeType(lineThickness, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        }
+        
+        // Draw pointer notch
+        auto notchLength = radius * 0.3f;
+        auto notchWidth = 2.5f;
+        auto notchDistance = radius * 0.55f;
+        
+        juce::Path notch;
+        notch.addRoundedRectangle(-notchWidth * 0.5f, -notchDistance,
+                                  notchWidth, notchLength, 1.0f);
+        notch.applyTransform(juce::AffineTransform::rotation(angle).translated(centerX, centerY));
+        
+        g.setColour(slider.isEnabled() ? juce::Colours::white : juce::Colour(0xff888888));
+        g.fillPath(notch);
+    }
 
 };

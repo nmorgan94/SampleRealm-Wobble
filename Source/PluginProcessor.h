@@ -61,6 +61,22 @@ public:
         return wavetables[oscIndex];
     }
     
+    bool getBoolParam(const juce::String& paramID) const
+    {
+        if (auto* param = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(paramID)))
+            return param->get();
+        jassertfalse;
+        return false;
+    }
+    
+    float getFloatParam(const juce::String& paramID) const
+    {
+        if (auto* param = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(paramID)))
+            return param->get();
+        jassertfalse;
+        return 0.0f;
+    }
+    
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -69,7 +85,6 @@ private:
     juce::AudioBuffer<float> wavetables[3];
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
-    bool oscEnabled[3] = { true, false, false };
     
     void generateWavetable(int oscIndex, WaveformType type);
     void updateWavetables();

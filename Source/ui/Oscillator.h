@@ -11,6 +11,7 @@ public:
     Oscillator(juce::AudioProcessorValueTreeState& apvts,
                const juce::String& enableParamID,
                const juce::String& waveformParamID,
+               const juce::String& gainParamID,
                const juce::String& labelText,
                const juce::AudioBuffer<float>& wavetableRef)
         : wavetable(wavetableRef)
@@ -30,10 +31,16 @@ public:
         waveformSelector.addItem("Pulse 10%", 6);
         addAndMakeVisible(waveformSelector);
         
+        gainSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        gainSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        addAndMakeVisible(gainSlider);
+        
         enableAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
             apvts, enableParamID, enableButton);
         waveformAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
             apvts, waveformParamID, waveformSelector);
+        gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            apvts, gainParamID, gainSlider);
         
         startTimerHz(30);
     }
@@ -54,6 +61,8 @@ public:
         titleLabel.setAlpha(alpha);
         waveformSelector.setAlpha(alpha);
         waveformSelector.setEnabled(isEnabled);
+        gainSlider.setAlpha(alpha);
+        gainSlider.setEnabled(isEnabled);
         
         // Draw background
         g.setColour(juce::Colour(0xff1a1a1a));
@@ -81,14 +90,20 @@ public:
         
         enableButton.setBounds(controlBar.removeFromLeft(30));
         
-        controlBar.removeFromLeft(10); 
+        controlBar.removeFromLeft(10);
         
-        auto labelWidth = 100;
+        auto labelWidth = 80;
         titleLabel.setBounds(controlBar.removeFromLeft(labelWidth));
         
+        controlBar.removeFromLeft(10);
+        
+        auto knobSize = 30;
+        auto selectorWidth = controlBar.getWidth() - knobSize - 10;
+        waveformSelector.setBounds(controlBar.removeFromLeft(selectorWidth));
+        
         controlBar.removeFromLeft(10); 
         
-        waveformSelector.setBounds(controlBar);
+        gainSlider.setBounds(controlBar.removeFromLeft(knobSize).withHeight(knobSize));
     }
     
     void timerCallback() override
@@ -148,9 +163,11 @@ private:
     juce::Label titleLabel;
     juce::ToggleButton enableButton;
     juce::ComboBox waveformSelector;
+    juce::Slider gainSlider;
     
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> waveformAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Oscillator)
 };
