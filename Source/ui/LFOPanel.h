@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include "CurveEditor.h"
 
 class LFOPanel : public juce::Component
 {
@@ -9,12 +10,12 @@ public:
     {
         for (int i = 1; i <= 4; ++i)
         {
-            auto panel = std::make_unique<juce::Component>();
-            lfoPanels.push_back(std::move(panel));
+            auto editor = std::make_unique<CurveEditor>();
+            curveEditors.push_back(std::move(editor));
             
-            tabbedComponent.addTab("LFO " + juce::String(i), 
-                                  juce::Colour(0xff1a1a1a), 
-                                  lfoPanels.back().get(), 
+            tabbedComponent.addTab("LFO " + juce::String(i),
+                                  juce::Colour(0xff1a1a1a),
+                                  curveEditors.back().get(),
                                   false);
         }
         
@@ -37,10 +38,16 @@ public:
     {
         tabbedComponent.setBounds(getLocalBounds());
     }
+    
+    CurveEditor* getCurveEditor(int lfoIndex)
+    {
+        jassert(lfoIndex >= 0 && lfoIndex < (int)curveEditors.size());
+        return curveEditors[lfoIndex].get();
+    }
 
 private:
     juce::TabbedComponent tabbedComponent;
-    std::vector<std::unique_ptr<juce::Component>> lfoPanels;
+    std::vector<std::unique_ptr<CurveEditor>> curveEditors;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LFOPanel)
 };
