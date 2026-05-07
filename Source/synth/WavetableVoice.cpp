@@ -67,7 +67,6 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
         for (int sample = 0; sample < numSamples; ++sample)
         {
             float mixedSample = 0.0f;
-            float totalGain = 0.0f;
             
             for (int osc = 0; osc < 3; ++osc)
             {
@@ -80,7 +79,6 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
                 if (oscEnabled)
                 {
                     mixedSample += getInterpolatedSample(osc, localPhases[osc]) * oscGain;
-                    totalGain += oscGain;
                     
                     // Increment phase and wrap
                     localPhases[osc] += phaseIncrement;
@@ -88,10 +86,6 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
                         localPhases[osc] -= wavetableSize;
                 }
             }
-            
-            // Normalize by total gain to prevent clipping when multiple oscs are enabled
-            if (totalGain > 0.0f)
-                mixedSample /= totalGain;
             
             // Apply level and add to output
             channelData[sample] += mixedSample * level;

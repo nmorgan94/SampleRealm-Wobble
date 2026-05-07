@@ -38,7 +38,7 @@ To debug the plugin in Xcode with an executable:
 
 ```bash
 cmake -B build-xcode -G Xcode
-open build-xcode/Reese.xcodeproj
+open build-xcode/Wobble.xcodeproj
 ```
 
 ### 2. Configure Debugging
