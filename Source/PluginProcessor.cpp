@@ -20,6 +20,46 @@ AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
 }
 
 //==============================================================================
+const juce::AudioBuffer<float>& AudioPluginAudioProcessor::getWavetable(int oscIndex) const
+{
+    return wavetables[oscIndex];
+}
+
+bool AudioPluginAudioProcessor::getBoolParam(const juce::String& paramID) const
+{
+    if (auto* param = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(paramID)))
+        return param->get();
+    jassertfalse;
+    return false;
+}
+
+float AudioPluginAudioProcessor::getFloatParam(const juce::String& paramID) const
+{
+    if (auto* param = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(paramID)))
+        return param->get();
+    jassertfalse;
+    return 0.0f;
+}
+
+float AudioPluginAudioProcessor::getModulatedParam(const juce::String& paramID) const
+{
+    float baseValue = getFloatParam(paramID);
+    
+    // Check if this parameter has an LFO assigned
+    auto assignment = modulationManager.getAssignment(paramID);
+    if (assignment.isAssigned())
+    {
+        // Get the LFO value (0.0 to 1.0)
+        float lfoValue = lfos[assignment.lfoIndex].getCurrentValue();
+        
+        // Apply modulation
+        return modulationManager.calculateModulatedValue(baseValue, lfoValue, assignment.depth);
+    }
+    
+    return baseValue;
+}
+
+//==============================================================================
 const juce::String AudioPluginAudioProcessor::getName() const
 {
     return JucePlugin_Name;
@@ -101,6 +141,13 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         generateWavetable(i, currentWaveformTypes[i]);
     }
     
+    // Initialize LFOs
+    for (int i = 0; i < 4; ++i)
+    {
+        lfos[i].prepare(sampleRate);
+        lfos[i].setRate(getFloatParam("lfo" + juce::String(i + 1) + "_rate"));
+    }
+    
     synth.clearVoices();
     synth.clearSounds();
     
@@ -165,6 +212,12 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             generateWavetable(i, newWaveformType);
         }
     }
+    
+    // Update LFO rates and advance all LFOs by buffer size
+    updateLFOs();
+    
+    for (int i = 0; i < 4; ++i)
+        lfos[i].advance(buffer.getNumSamples());
 
     buffer.clear();
     
@@ -281,4 +334,14 @@ void AudioPluginAudioProcessor::updateWavetables()
 {
     for (int i = 0; i < 3; ++i)
         generateWavetable(i, currentWaveformTypes[i]);
+}
+
+void AudioPluginAudioProcessor::updateLFOs()
+{
+    // Update LFO rates from parameters
+    for (int i = 0; i < 4; ++i)
+    {
+        float rate = getFloatParam("lfo" + juce::String(i + 1) + "_rate");
+        lfos[i].setRate(rate);
+    }
 }

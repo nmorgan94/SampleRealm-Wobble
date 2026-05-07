@@ -2,6 +2,8 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "synth/WavetableVoice.h"
+#include "synth/LFO.h"
+#include "ModulationManager.h"
 #include "Parameters.h"
 
 //==============================================================================
@@ -56,26 +58,19 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     //==============================================================================
-    const juce::AudioBuffer<float>& getWavetable(int oscIndex) const
+    const juce::AudioBuffer<float>& getWavetable(int oscIndex) const;
+    bool getBoolParam(const juce::String& paramID) const;
+    float getFloatParam(const juce::String& paramID) const;
+    float getModulatedParam(const juce::String& paramID) const;
+    
+    // Get LFO for external access (e.g., from editor)
+    LFO& getLFO(size_t lfoIndex)
     {
-        return wavetables[oscIndex];
+        jassert(lfoIndex < 4);
+        return lfos[lfoIndex];
     }
     
-    bool getBoolParam(const juce::String& paramID) const
-    {
-        if (auto* param = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(paramID)))
-            return param->get();
-        jassertfalse;
-        return false;
-    }
-    
-    float getFloatParam(const juce::String& paramID) const
-    {
-        if (auto* param = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(paramID)))
-            return param->get();
-        jassertfalse;
-        return 0.0f;
-    }
+    ModulationManager& getModulationManager() { return modulationManager; }
     
     juce::AudioProcessorValueTreeState apvts;
 
@@ -83,11 +78,14 @@ private:
     //==============================================================================
     juce::Synthesiser synth;
     juce::AudioBuffer<float> wavetables[3];
+    LFO lfos[4];
+    ModulationManager modulationManager;
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
     
     void generateWavetable(int oscIndex, WaveformType type);
     void updateWavetables();
+    void updateLFOs();
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

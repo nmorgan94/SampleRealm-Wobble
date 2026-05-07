@@ -2,20 +2,27 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "ModulatableSlider.h"
+
+// Forward declaration
+class AudioPluginAudioProcessor;
 
 class Oscillator : public juce::Component,
                    private juce::Timer,
                    private juce::Button::Listener
 {
 public:
-    Oscillator(juce::AudioProcessorValueTreeState& apvts,
+    Oscillator(AudioPluginAudioProcessor& proc,
+               juce::AudioProcessorValueTreeState& apvts,
                const juce::String& enableParamID,
                const juce::String& waveformParamID,
                const juce::String& gainParamID,
                const juce::String& labelText,
                const juce::AudioBuffer<float>& wavetableRef)
-        : wavetable(wavetableRef)
+        : wavetable(wavetableRef),
+          gainSlider(proc, gainParamID)
     {
+        
         titleLabel.setText(labelText, juce::dontSendNotification);
         titleLabel.setJustificationType(juce::Justification::centred);
         addAndMakeVisible(titleLabel);
@@ -31,8 +38,6 @@ public:
         waveformSelector.addItem("Pulse 10%", 6);
         addAndMakeVisible(waveformSelector);
         
-        gainSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-        gainSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
         addAndMakeVisible(gainSlider);
         
         enableAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
@@ -113,8 +118,10 @@ public:
     
     void buttonClicked(juce::Button*) override
     {
-        repaint(); 
+        repaint();
     }
+    
+    ModulatableSlider& getGainSlider() { return gainSlider; }
 
 private:
     void drawWaveform(juce::Graphics& g, juce::Rectangle<int> bounds, float alpha)
@@ -163,7 +170,7 @@ private:
     juce::Label titleLabel;
     juce::ToggleButton enableButton;
     juce::ComboBox waveformSelector;
-    juce::Slider gainSlider;
+    ModulatableSlider gainSlider;
     
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> waveformAttachment;

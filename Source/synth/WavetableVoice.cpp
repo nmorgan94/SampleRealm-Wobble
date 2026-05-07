@@ -75,7 +75,7 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
                 juce::String gainParamID = "osc" + juce::String(osc + 1) + "_gain";
                 
                 const bool oscEnabled = owner.getBoolParam(enableParamID);
-                const float oscGain = owner.getFloatParam(gainParamID);
+                const float oscGain = owner.getModulatedParam(gainParamID);
                 
                 if (oscEnabled)
                 {

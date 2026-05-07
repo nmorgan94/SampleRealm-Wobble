@@ -2,11 +2,29 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include "CurveEditor.h"
+#include "CustomLFOTabButton.h"
 
-class LFOPanel : public juce::Component
+// Forward declaration
+class AudioPluginAudioProcessor;
+
+class CustomLFOTabbedComponent : public juce::TabbedComponent
 {
 public:
-    LFOPanel() : tabbedComponent(juce::TabbedButtonBar::TabsAtTop)
+    CustomLFOTabbedComponent() : juce::TabbedComponent(juce::TabbedButtonBar::TabsAtTop)
+    {
+    }
+    
+    juce::TabBarButton* createTabButton(const juce::String& tabName, int tabIndex) override
+    {
+        return new CustomLFOTabButton(tabName, getTabbedButtonBar(), tabIndex);
+    }
+};
+
+class LFOPanel : public juce::Component,
+                 public CurveEditor::Listener
+{
+public:
+    LFOPanel(AudioPluginAudioProcessor& proc) : processor(proc)
     {
         for (int i = 1; i <= 4; ++i)
         {
@@ -23,6 +41,36 @@ public:
         tabbedComponent.setOutline(0);
         
         addAndMakeVisible(tabbedComponent);
+        
+        // Register as listener for all curve editors and sync initial curves
+        for (size_t i = 0; i < 4; ++i)
+        {
+            curveEditors[i]->addListener(this);
+            syncCurveToLFO(curveEditors[i].get(), i);
+        }
+    }
+    
+    ~LFOPanel() override
+    {
+        // Unregister from curve editors
+        for (size_t i = 0; i < 4; ++i)
+        {
+            curveEditors[i]->removeListener(this);
+        }
+    }
+    
+    // CurveEditor::Listener
+    void curveChanged(CurveEditor* editor) override
+    {
+        // Find which LFO this curve editor belongs to
+        for (size_t i = 0; i < 4; ++i)
+        {
+            if (curveEditors[i].get() == editor)
+            {
+                syncCurveToLFO(editor, i);
+                break;
+            }
+        }
     }
     
     void paint(juce::Graphics& g) override
@@ -39,14 +87,15 @@ public:
         tabbedComponent.setBounds(getLocalBounds());
     }
     
-    CurveEditor* getCurveEditor(int lfoIndex)
-    {
-        jassert(lfoIndex >= 0 && lfoIndex < (int)curveEditors.size());
-        return curveEditors[lfoIndex].get();
-    }
-
 private:
-    juce::TabbedComponent tabbedComponent;
+    void syncCurveToLFO(CurveEditor* editor, size_t lfoIndex)
+    {
+        auto curveFunction = [editor](float x) { return editor->getValueAt(x); };
+        processor.getLFO(lfoIndex).syncFromCurve(curveFunction);
+    }
+    
+    AudioPluginAudioProcessor& processor;
+    CustomLFOTabbedComponent tabbedComponent;
     std::vector<std::unique_ptr<CurveEditor>> curveEditors;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LFOPanel)

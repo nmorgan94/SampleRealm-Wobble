@@ -2,6 +2,7 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
+#include <optional>
 
 class CurveEditor : public juce::Component
 {
@@ -86,8 +87,8 @@ public:
             g.fillEllipse(px - 6, py - 6, 12, 12);
             
             // Inner circle
-            bool isHovered = (i == hoveredPointIndex);
-            bool isDragged = (i == draggedPointIndex);
+            bool isHovered = (hoveredPointIndex.has_value() && i == hoveredPointIndex.value());
+            bool isDragged = (draggedPointIndex.has_value() && i == draggedPointIndex.value());
             
             if (isDragged)
                 g.setColour(juce::Colours::white);
@@ -108,7 +109,7 @@ public:
     
     void mouseExit(const juce::MouseEvent&) override
     {
-        hoveredPointIndex = -1;
+        hoveredPointIndex.reset();
         repaint();
     }
     
@@ -121,13 +122,16 @@ public:
             // Double-click to add/remove points
             if (event.getNumberOfClicks() == 2)
             {
-                if (draggedPointIndex >= 0)
+                if (draggedPointIndex.has_value())
                 {
                     // Remove point (but keep first and last)
-                    if (draggedPointIndex > 0 && draggedPointIndex < (int)controlPoints.size() - 1)
+                    size_t pointIndex = draggedPointIndex.value();
+                    if (pointIndex > 0 && pointIndex < controlPoints.size() - 1)
                     {
-                        controlPoints.erase(controlPoints.begin() + draggedPointIndex);
-                        draggedPointIndex = -1;
+                        auto pointIterator = controlPoints.begin();
+                        std::advance(pointIterator, pointIndex);
+                        controlPoints.erase(pointIterator);
+                        draggedPointIndex.reset();
                         notifyListeners();
                         repaint();
                     }
@@ -156,7 +160,7 @@ public:
     
     void mouseDrag(const juce::MouseEvent& event) override
     {
-        if (draggedPointIndex >= 0 && draggedPointIndex < (int)controlPoints.size())
+        if (draggedPointIndex.has_value() && draggedPointIndex.value() < controlPoints.size())
         {
             auto bounds = getLocalBounds().toFloat();
             float x = (event.position.x - bounds.getX()) / bounds.getWidth();
@@ -166,14 +170,14 @@ public:
             y = juce::jlimit(0.0f, 1.0f, y);
             
             // Constrain X position based on point type
-            if (draggedPointIndex == 0)
+            if (draggedPointIndex.value() == 0)
             {
                 // First point stays at x=0
                 x = 0.0f;
                 // Sync last point's Y value for seamless loop
                 controlPoints.back().y = y;
             }
-            else if (draggedPointIndex == (int)controlPoints.size() - 1)
+            else if (draggedPointIndex.value() == controlPoints.size() - 1)
             {
                 // Last point stays at x=1
                 x = 1.0f;
@@ -184,13 +188,13 @@ public:
             {
                 // Middle points: constrain between neighbors with small margin
                 const float margin = 0.01f; // Minimum distance between points
-                float minX = controlPoints[draggedPointIndex - 1].x + margin;
-                float maxX = controlPoints[draggedPointIndex + 1].x - margin;
+                float minX = controlPoints[draggedPointIndex.value() - 1].x + margin;
+                float maxX = controlPoints[draggedPointIndex.value() + 1].x - margin;
                 x = juce::jlimit(minX, maxX, x);
             }
             
-            controlPoints[draggedPointIndex].x = x;
-            controlPoints[draggedPointIndex].y = y;
+            controlPoints[draggedPointIndex.value()].x = x;
+            controlPoints[draggedPointIndex.value()].y = y;
             
             notifyListeners();
             repaint();
@@ -199,7 +203,7 @@ public:
     
     void mouseUp(const juce::MouseEvent&) override
     {
-        draggedPointIndex = -1;
+        draggedPointIndex.reset();
         repaint();
     }
     
@@ -305,11 +309,11 @@ private:
         }
     }
     
-    int findNearestPoint(juce::Point<float> pos) const
+    std::optional<size_t> findNearestPoint(juce::Point<float> pos) const
     {
         auto bounds = getLocalBounds().toFloat();
         const float threshold = 10.0f;
-        int nearest = -1;
+        std::optional<size_t> nearest;
         float minDist = threshold;
         
         for (size_t i = 0; i < controlPoints.size(); ++i)
@@ -321,7 +325,7 @@ private:
             if (dist < minDist)
             {
                 minDist = dist;
-                nearest = (int)i;
+                nearest = i;
             }
         }
         
@@ -334,8 +338,8 @@ private:
     }
     
     std::vector<ControlPoint> controlPoints;
-    int hoveredPointIndex = -1;
-    int draggedPointIndex = -1;
+    std::optional<size_t> hoveredPointIndex;
+    std::optional<size_t> draggedPointIndex;
     juce::ListenerList<Listener> listeners;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveEditor)
