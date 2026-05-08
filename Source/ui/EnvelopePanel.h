@@ -26,7 +26,7 @@ class EnvelopeContentPanel : public juce::Component,
 {
 public:
     EnvelopeContentPanel(AudioPluginAudioProcessor& proc, int envIndex)
-        : processor(proc), envelopeIndex(envIndex)
+        : processor(proc)
     {
         // Create envelope editor
         envelopeEditor = std::make_unique<EnvelopeEditor>();
@@ -117,7 +117,6 @@ private:
     }
     
     AudioPluginAudioProcessor& processor;
-    int envelopeIndex;
     
     std::unique_ptr<EnvelopeEditor> envelopeEditor;
     
