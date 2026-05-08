@@ -1,6 +1,7 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "ADSREnvelope.h"
 
 class AudioPluginAudioProcessor;
 
@@ -33,6 +34,8 @@ private:
     double phaseIncrement = 0.0;
     float level = 0.0f;
     double currentFrequency = 0.0;
+    
+    ADSREnvelope envelope;
 
     float getInterpolatedSample(int oscIndex, double phase) const;
     

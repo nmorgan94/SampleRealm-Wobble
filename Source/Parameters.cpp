@@ -59,6 +59,28 @@ namespace Parameters
             juce::ParameterID{"lfo4_rate", versionHint}, "LFO 4 Rate",
             juce::NormalisableRange<float>(0.01f, 20.0f, 0.01f, 0.3f), 8.0f));
         
+        for (int i = 1; i <= 4; ++i)
+        {
+            juce::String envPrefix = "env" + juce::String(i);
+            juce::String envName = "Env " + juce::String(i);
+            
+            params.push_back(std::make_unique<juce::AudioParameterFloat>(
+                juce::ParameterID{envPrefix + "_attack", versionHint}, envName + " Attack",
+                juce::NormalisableRange<float>(0.001f, 5.0f, 0.001f, 0.3f), 0.01f));
+            
+            params.push_back(std::make_unique<juce::AudioParameterFloat>(
+                juce::ParameterID{envPrefix + "_decay", versionHint}, envName + " Decay",
+                juce::NormalisableRange<float>(0.001f, 5.0f, 0.001f, 0.3f), 0.1f));
+            
+            params.push_back(std::make_unique<juce::AudioParameterFloat>(
+                juce::ParameterID{envPrefix + "_sustain", versionHint}, envName + " Sustain",
+                juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
+            
+            params.push_back(std::make_unique<juce::AudioParameterFloat>(
+                juce::ParameterID{envPrefix + "_release", versionHint}, envName + " Release",
+                juce::NormalisableRange<float>(0.001f, 5.0f, 0.001f, 0.3f), 0.3f));
+        }
+        
         return { params.begin(), params.end() };
     }
 }

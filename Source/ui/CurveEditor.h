@@ -3,14 +3,15 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include <optional>
+#include "BaseCurveDisplay.h"
 
-class CurveEditor : public juce::Component
+class CurveEditor : public BaseCurveDisplay
 {
 public:
     struct ControlPoint
     {
-        float x; 
-        float y; 
+        float x;
+        float y;
         
         ControlPoint(float xPos = 0.0f, float yPos = 0.5f) : x(xPos), y(yPos) {}
     };
@@ -27,80 +28,56 @@ public:
         
         setMouseCursor(juce::MouseCursor::PointingHandCursor);
     }
+
+protected:
+    bool shouldDrawCenterLine() const override { return true; }
     
-    void paint(juce::Graphics& g) override
+    void generateCurvePath(juce::Path& path, const juce::Rectangle<float>& bounds) const override
     {
-        auto bounds = getLocalBounds().toFloat();
+        if (controlPoints.empty())
+            return;
         
-        // Draw background
-        g.setColour(juce::Colour(0xff0a0a0a));
-        g.fillRoundedRectangle(bounds, 4.0f);
+        // Generate smooth curve through control points
+        const int resolution = 200;
+        bool first = true;
         
-        // Draw grid lines
-        g.setColour(juce::Colour(0xff2a2a2a));
-        const int numVerticalLines = 8;
-        const int numHorizontalLines = 4;
-        
-        for (int i = 1; i < numVerticalLines; ++i)
+        for (int i = 0; i <= resolution; ++i)
         {
-            float x = bounds.getX() + (bounds.getWidth() * i / numVerticalLines);
-            g.drawLine(x, bounds.getY(), x, bounds.getBottom(), 1.0f);
+            float x = i / (float)resolution;
+            float value = getValueAt(x);
+            
+            float px = bounds.getX() + x * bounds.getWidth();
+            float py = bounds.getY() + (1.0f - value) * bounds.getHeight();
+            
+            if (first)
+            {
+                path.startNewSubPath(px, py);
+                first = false;
+            }
+            else
+            {
+                path.lineTo(px, py);
+            }
         }
-        
-        for (int i = 1; i < numHorizontalLines; ++i)
-        {
-            float y = bounds.getY() + (bounds.getHeight() * i / numHorizontalLines);
-            g.drawLine(bounds.getX(), y, bounds.getRight(), y, 1.0f);
-        }
-        
-        // Draw center line
-        g.setColour(juce::Colour(0xff3a3a3a));
-        float centerY = bounds.getCentreY();
-        g.drawLine(bounds.getX(), centerY, bounds.getRight(), centerY, 1.5f);
-        
-        // Generate curve path
-        juce::Path curvePath;
-        generateCurvePath(curvePath, bounds);
-        
-        // Draw filled area under curve
-        juce::Path filledPath = curvePath;
-        filledPath.lineTo(bounds.getRight(), bounds.getBottom());
-        filledPath.lineTo(bounds.getX(), bounds.getBottom());
-        filledPath.closeSubPath();
-        
-        g.setColour(juce::Colour(0xff00ff41).withAlpha(0.2f));
-        g.fillPath(filledPath);
-        
-        // Draw curve line
-        g.setColour(juce::Colour(0xff00ff41));
-        g.strokePath(curvePath, juce::PathStrokeType(2.0f));
-        
-        // Draw control points
+    }
+    
+    void drawControlPoints(juce::Graphics& g, const juce::Rectangle<float>& bounds) const override
+    {
         for (size_t i = 0; i < controlPoints.size(); ++i)
         {
             auto point = controlPoints[i];
             float px = bounds.getX() + point.x * bounds.getWidth();
             float py = bounds.getY() + (1.0f - point.y) * bounds.getHeight();
             
-            // Outer circle
-            g.setColour(juce::Colour(0xff00ff41));
-            g.fillEllipse(px - 6, py - 6, 12, 12);
-            
-            // Inner circle
             bool isHovered = (hoveredPointIndex.has_value() && i == hoveredPointIndex.value());
             bool isDragged = (draggedPointIndex.has_value() && i == draggedPointIndex.value());
+            bool isHighlighted = isDragged || isHovered;
             
-            if (isDragged)
-                g.setColour(juce::Colours::white);
-            else if (isHovered)
-                g.setColour(juce::Colour(0xff00ff41).brighter(0.3f));
-            else
-                g.setColour(juce::Colour(0xff0a0a0a));
-                
-            g.fillEllipse(px - 4, py - 4, 8, 8);
+            drawPoint(g, px, py, isHighlighted);
         }
     }
-    
+
+public:
     void mouseMove(const juce::MouseEvent& event) override
     {
         hoveredPointIndex = findNearestPoint(event.position);
@@ -278,35 +255,6 @@ private:
         );
         
         return juce::jlimit(0.0f, 1.0f, result);
-    }
-    
-    void generateCurvePath(juce::Path& path, const juce::Rectangle<float>& bounds) const
-    {
-        if (controlPoints.empty())
-            return;
-        
-        // Generate smooth curve through control points
-        const int resolution = 200;
-        bool first = true;
-        
-        for (int i = 0; i <= resolution; ++i)
-        {
-            float x = i / (float)resolution;
-            float value = getValueAt(x);
-            
-            float px = bounds.getX() + x * bounds.getWidth();
-            float py = bounds.getY() + (1.0f - value) * bounds.getHeight();
-            
-            if (first)
-            {
-                path.startNewSubPath(px, py);
-                first = false;
-            }
-            else
-            {
-                path.lineTo(px, py);
-            }
-        }
     }
     
     std::optional<size_t> findNearestPoint(juce::Point<float> pos) const

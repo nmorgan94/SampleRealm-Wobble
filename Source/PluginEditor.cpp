@@ -22,7 +22,7 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
         "OSC 3", processorRef.getWavetable(2));
     addAndMakeVisible(osc3.get());
     
-    envelopePanel = std::make_unique<EnvelopePanel>();
+    envelopePanel = std::make_unique<EnvelopePanel>(processorRef);
     addAndMakeVisible(envelopePanel.get());
     
     lfoPanel = std::make_unique<LFOPanel>(processorRef);

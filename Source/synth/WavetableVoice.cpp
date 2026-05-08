@@ -30,15 +30,35 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
     // Reset all oscillator phases
     for (int i = 0; i < 3; ++i)
         currentPhases[i] = 0.0;
+    
+    // Initialize and trigger envelope
+    envelope.setSampleRate(getSampleRate());
+    
+    float attack = owner.getFloatParam("env1_attack");
+    float decay = owner.getFloatParam("env1_decay");
+    float sustain = owner.getFloatParam("env1_sustain");
+    float release = owner.getFloatParam("env1_release");
+    
+    envelope.setParameters(attack, decay, sustain, release);
+    envelope.noteOn();
 }
 
 void WavetableVoice::stopNote(float velocity, bool allowTailOff)
 {
-    juce::ignoreUnused(velocity, allowTailOff);
+    juce::ignoreUnused(velocity);
     
-    // Immediately stop the note (no release envelope)
-    clearCurrentNote();
-    level = 0.0;
+    if (allowTailOff)
+    {
+        // Trigger envelope release
+        envelope.noteOff();
+    }
+    else
+    {
+        // Immediately stop the note
+        clearCurrentNote();
+        envelope.reset();
+        level = 0.0;
+    }
 }
 
 void WavetableVoice::pitchWheelMoved(int newPitchWheelValue)
@@ -54,8 +74,11 @@ void WavetableVoice::controllerMoved(int controllerNumber, int newControllerValu
 void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
                                      int startSample, int numSamples)
 {
-    if (level == 0.0f)
+    if (!envelope.isActive())
+    {
+        clearCurrentNote();
         return;
+    }
     
     auto wavetableSize = wavetables[0].getNumSamples();
     
@@ -87,8 +110,11 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
                 }
             }
             
-            // Apply level and add to output
-            channelData[sample] += mixedSample * level;
+            // Get envelope value for this sample
+            float envelopeValue = envelope.getNextSample();
+            
+            // Apply velocity, envelope, and add to output
+            channelData[sample] += mixedSample * level * envelopeValue;
         }
     }
     

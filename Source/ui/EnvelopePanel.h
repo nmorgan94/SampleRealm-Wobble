@@ -1,20 +1,149 @@
 #pragma once
 
 #include <juce_gui_basics/juce_gui_basics.h>
+#include <juce_audio_processors/juce_audio_processors.h>
+#include "EnvelopeEditor.h"
+#include "CustomLFOTabButton.h"
+
+class AudioPluginAudioProcessor;
+
+class CustomEnvelopeTabbedComponent : public juce::TabbedComponent
+{
+public:
+    CustomEnvelopeTabbedComponent() : juce::TabbedComponent(juce::TabbedButtonBar::TabsAtTop)
+    {
+    }
+    
+    juce::TabBarButton* createTabButton(const juce::String& tabName, int tabIndex) override
+    {
+        return new CustomLFOTabButton(tabName, getTabbedButtonBar(), tabIndex);
+    }
+};
+
+class EnvelopeContentPanel : public juce::Component,
+                             public juce::Slider::Listener
+{
+public:
+    EnvelopeContentPanel(AudioPluginAudioProcessor& proc, int envIndex)
+        : processor(proc), envelopeIndex(envIndex)
+    {
+        // Create envelope editor
+        envelopeEditor = std::make_unique<EnvelopeEditor>();
+        addAndMakeVisible(envelopeEditor.get());
+        
+        // Create ADSR sliders
+        juce::String envPrefix = "env" + juce::String(envIndex + 1) + "_";
+        
+        setupSlider(attackSlider, attackLabel, "Attack", envPrefix + "attack");
+        setupSlider(decaySlider, decayLabel, "Decay", envPrefix + "decay");
+        setupSlider(sustainSlider, sustainLabel, "Sustain", envPrefix + "sustain");
+        setupSlider(releaseSlider, releaseLabel, "Release", envPrefix + "release");
+        
+        // Initial update
+        updateEnvelopeDisplay();
+    }
+    
+    ~EnvelopeContentPanel() override
+    {
+        attackSlider.removeListener(this);
+        decaySlider.removeListener(this);
+        sustainSlider.removeListener(this);
+        releaseSlider.removeListener(this);
+    }
+    
+    void sliderValueChanged(juce::Slider* slider) override
+    {
+        juce::ignoreUnused(slider);
+        updateEnvelopeDisplay();
+    }
+    
+    void resized() override
+    {
+        auto bounds = getLocalBounds().reduced(10);
+        
+        // Envelope editor takes top portion
+        int editorHeight = juce::roundToInt(bounds.getHeight() * 0.65f);
+        auto editorBounds = bounds.removeFromTop(editorHeight);
+        envelopeEditor->setBounds(editorBounds);
+        
+        bounds.removeFromTop(10); // Spacing
+        
+        auto knobSize = 50;
+        auto spacing = (bounds.getWidth() - (knobSize * 4)) / 5;
+        
+        juce::Slider* sliders[] = { &attackSlider, &decaySlider, &sustainSlider, &releaseSlider };
+        juce::Label* labels[] = { &attackLabel, &decayLabel, &sustainLabel, &releaseLabel };
+        
+        for (int i = 0; i < 4; ++i)
+        {
+            bounds.removeFromLeft(spacing);
+            auto knobBounds = bounds.removeFromLeft(knobSize);
+            labels[i]->setBounds(knobBounds.removeFromTop(16));
+            sliders[i]->setBounds(knobBounds.removeFromTop(knobSize).withSizeKeepingCentre(knobSize, knobSize));
+        }
+    }
+
+private:
+    void setupSlider(juce::Slider& slider, juce::Label& label,
+                     const juce::String& labelText, const juce::String& paramID)
+    {
+        slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        slider.setColour(juce::Slider::rotarySliderFillColourId, juce::Colour(0xff00ff41));
+        slider.setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff2a2a2a));
+        slider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff00ff41));
+        slider.addListener(this);
+        addAndMakeVisible(slider);
+        
+        auto* param = processor.apvts.getParameter(paramID);
+        if (param != nullptr)
+        {
+            sliderAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+                processor.apvts, paramID, slider));
+        }
+        
+        label.setText(labelText, juce::dontSendNotification);
+        label.setJustificationType(juce::Justification::centred);
+        label.setColour(juce::Label::textColourId, juce::Colour(0xff00ff41));
+        addAndMakeVisible(label);
+    }
+    
+    void updateEnvelopeDisplay()
+    {
+        auto attack = attackSlider.getValue();
+        auto decay = decaySlider.getValue();
+        auto sustain = sustainSlider.getValue();
+        auto release = releaseSlider.getValue();
+        
+        envelopeEditor->setADSRValues(attack, decay, sustain, release);
+    }
+    
+    AudioPluginAudioProcessor& processor;
+    int envelopeIndex;
+    
+    std::unique_ptr<EnvelopeEditor> envelopeEditor;
+    
+    juce::Slider attackSlider, decaySlider, sustainSlider, releaseSlider;
+    juce::Label attackLabel, decayLabel, sustainLabel, releaseLabel;
+    
+    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;
+    
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EnvelopeContentPanel)
+};
 
 class EnvelopePanel : public juce::Component
 {
 public:
-    EnvelopePanel() : tabbedComponent(juce::TabbedButtonBar::TabsAtTop)
+    EnvelopePanel(AudioPluginAudioProcessor& proc) : processor(proc)
     {
-        for (int i = 1; i <= 4; ++i)
+        for (int i = 0; i < 4; ++i)
         {
-            auto panel = std::make_unique<juce::Component>();
+            auto panel = std::make_unique<EnvelopeContentPanel>(processor, i);
             envelopePanels.push_back(std::move(panel));
             
-            tabbedComponent.addTab("ENV " + juce::String(i), 
-                                  juce::Colour(0xff1a1a1a), 
-                                  envelopePanels.back().get(), 
+            tabbedComponent.addTab("ENV " + juce::String(i + 1),
+                                  juce::Colour(0xff1a1a1a),
+                                  envelopePanels.back().get(),
                                   false);
         }
         
@@ -39,8 +168,9 @@ public:
     }
 
 private:
-    juce::TabbedComponent tabbedComponent;
-    std::vector<std::unique_ptr<juce::Component>> envelopePanels;
+    AudioPluginAudioProcessor& processor;
+    CustomEnvelopeTabbedComponent tabbedComponent;
+    std::vector<std::unique_ptr<EnvelopeContentPanel>> envelopePanels;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(EnvelopePanel)
 };

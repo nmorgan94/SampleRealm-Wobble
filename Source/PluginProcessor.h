@@ -3,6 +3,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "synth/WavetableVoice.h"
 #include "synth/LFO.h"
+#include "synth/ADSREnvelope.h"
 #include "ModulationManager.h"
 #include "Parameters.h"
 
@@ -70,6 +71,12 @@ public:
         return lfos[lfoIndex];
     }
     
+    ADSREnvelope& getEnvelope(size_t envIndex)
+    {
+        jassert(envIndex < 4);
+        return envelopes[envIndex];
+    }
+    
     ModulationManager& getModulationManager() { return modulationManager; }
     
     juce::AudioProcessorValueTreeState apvts;
@@ -79,6 +86,7 @@ private:
     juce::Synthesiser synth;
     juce::AudioBuffer<float> wavetables[3];
     LFO lfos[4];
+    ADSREnvelope envelopes[4];
     ModulationManager modulationManager;
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };

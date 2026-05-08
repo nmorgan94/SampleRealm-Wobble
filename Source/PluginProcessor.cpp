@@ -148,6 +148,20 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         lfos[i].setRate(getFloatParam("lfo" + juce::String(i + 1) + "_rate"));
     }
     
+    // Initialize envelopes
+    for (int i = 0; i < 4; ++i)
+    {
+        envelopes[i].setSampleRate(sampleRate);
+        
+        juce::String envPrefix = "env" + juce::String(i + 1) + "_";
+        float attack = getFloatParam(envPrefix + "attack");
+        float decay = getFloatParam(envPrefix + "decay");
+        float sustain = getFloatParam(envPrefix + "sustain");
+        float release = getFloatParam(envPrefix + "release");
+        
+        envelopes[i].setParameters(attack, decay, sustain, release);
+    }
+    
     synth.clearVoices();
     synth.clearSounds();
     
