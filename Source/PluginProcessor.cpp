@@ -264,7 +264,7 @@ void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData
         if (lfoElement != nullptr)
         {
             const auto& points = lfoCurvePoints[i];
-            lfoElement->setAttribute("numPoints", points.size());
+            lfoElement->setAttribute("numPoints", juce::String(points.size()));
             
             for (size_t j = 0; j < points.size(); ++j)
             {

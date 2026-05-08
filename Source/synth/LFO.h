@@ -41,6 +41,11 @@ public:
         return lookupTable[i0] + frac * (lookupTable[i1] - lookupTable[i0]);
     }
     
+    float getCurrentPhase() const
+    {
+        return phase;
+    }
+    
     // Advance the LFO by the specified number of samples
     void advance(int numSamples)
     {

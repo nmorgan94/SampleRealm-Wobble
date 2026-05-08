@@ -26,12 +26,16 @@ class LFOPanel : public juce::Component,
 public:
     LFOPanel(AudioPluginAudioProcessor& proc) : processor(proc)
     {
-        for (int i = 1; i <= 4; ++i)
+        for (size_t i = 0; i < 4; ++i)
         {
             auto editor = std::make_unique<CurveEditor>();
+            
+            // Set the LFO for visualization overlay
+            editor->setLFO(&processor.getLFO(i));
+            
             curveEditors.push_back(std::move(editor));
             
-            tabbedComponent.addTab("LFO " + juce::String(i),
+            tabbedComponent.addTab("LFO " + juce::String(i + 1),
                                   juce::Colour(0xff1a1a1a),
                                   curveEditors.back().get(),
                                   false);

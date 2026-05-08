@@ -5,7 +5,10 @@
 #include <optional>
 #include "BaseCurveDisplay.h"
 
-class CurveEditor : public BaseCurveDisplay
+class LFO;
+
+class CurveEditor : public BaseCurveDisplay,
+                    public juce::Timer
 {
 public:
     struct ControlPoint
@@ -16,7 +19,7 @@ public:
         ControlPoint(float xPos = 0.0f, float yPos = 0.5f) : x(xPos), y(yPos) {}
     };
     
-    CurveEditor()
+    CurveEditor() : lfo(nullptr)
     {
         // Initialize with a simple sine-like curve
         controlPoints.clear();
@@ -27,6 +30,27 @@ public:
         controlPoints.push_back(ControlPoint(1.0f, 0.5f));
         
         setMouseCursor(juce::MouseCursor::PointingHandCursor);
+    }
+    
+    ~CurveEditor() override
+    {
+        if (lfo != nullptr)
+            stopTimer();
+    }
+    
+    void setLFO(LFO* lfoToVisualize)
+    {
+        lfo = lfoToVisualize;
+        if (lfo != nullptr)
+            startTimerHz(60); 
+        else
+            stopTimer();
+    }
+    
+    void timerCallback() override
+    {
+        if (lfo != nullptr)
+            repaint();
     }
 
 protected:
@@ -63,6 +87,17 @@ protected:
     
     void drawControlPoints(juce::Graphics& g, const juce::Rectangle<float>& bounds) const override
     {
+        if (lfo != nullptr)
+        {
+            float currentPhase = lfo->getCurrentPhase();
+            if (currentPhase >= 0.0f && currentPhase <= 1.0f)
+            {
+                float playheadX = bounds.getX() + currentPhase * bounds.getWidth();
+                g.setColour(juce::Colour(0xff00ff41).brighter(0.5f));
+                g.drawLine(playheadX, bounds.getY(), playheadX, bounds.getBottom(), 2.0f);
+            }
+        }
+        
         for (size_t i = 0; i < controlPoints.size(); ++i)
         {
             auto point = controlPoints[i];
@@ -289,6 +324,7 @@ private:
     std::optional<size_t> hoveredPointIndex;
     std::optional<size_t> draggedPointIndex;
     juce::ListenerList<Listener> listeners;
+    LFO* lfo;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveEditor)
 };
