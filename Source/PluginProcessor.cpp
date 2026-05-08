@@ -252,17 +252,66 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 //==============================================================================
 void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // You should use this method to store your parameters in the memory block.
-    // You could do that either as raw data, or use the XML or ValueTree classes
-    // as intermediaries to make it easy to save and load complex data.
-    juce::ignoreUnused (destData);
+    // Save APVTS state
+    auto state = apvts.copyState();
+    std::unique_ptr<juce::XmlElement> xml (state.createXml());
+    
+    // Add LFO curve data to XML
+    for (size_t i = 0; i < 4; ++i)
+    {
+        auto* lfoElement = xml->createNewChildElement("LFO" + juce::String(i + 1));
+        
+        if (lfoElement != nullptr)
+        {
+            const auto& points = lfoCurvePoints[i];
+            lfoElement->setAttribute("numPoints", points.size());
+            
+            for (size_t j = 0; j < points.size(); ++j)
+            {
+                lfoElement->setAttribute("point" + juce::String(j) + "_x", points[j].x);
+                lfoElement->setAttribute("point" + juce::String(j) + "_y", points[j].y);
+            }
+        }
+    }
+    
+    copyXmlToBinary (*xml, destData);
 }
 
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
-    // You should use this method to restore your parameters from this memory block,
-    // whose contents will have been created by the getStateInformation() call.
-    juce::ignoreUnused (data, sizeInBytes);
+    std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
+    
+    if (xmlState.get() != nullptr)
+    {
+        // Restore APVTS state
+        if (xmlState->hasTagName (apvts.state.getType()))
+            apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
+        
+        // Restore LFO curve data
+        for (size_t i = 0; i < 4; ++i)
+        {
+            auto* lfoElement = xmlState->getChildByName("LFO" + juce::String(i + 1));
+            
+            if (lfoElement != nullptr)
+            {
+                auto numPoints = lfoElement->getIntAttribute("numPoints", 0);
+                
+                if (numPoints > 0)
+                {
+                    std::vector<CurveEditor::ControlPoint> points;
+                    
+                    for (int j = 0; j < numPoints; ++j)
+                    {
+                        float x = (float)lfoElement->getDoubleAttribute("point" + juce::String(j) + "_x", 0.0);
+                        float y = (float)lfoElement->getDoubleAttribute("point" + juce::String(j) + "_y", 0.5);
+                        points.push_back(CurveEditor::ControlPoint(x, y));
+                    }
+                    
+                    lfoCurvePoints[i] = points;
+                }
+            }
+        }
+    }
 }
 
 //==============================================================================

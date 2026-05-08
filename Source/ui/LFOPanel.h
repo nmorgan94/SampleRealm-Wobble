@@ -42,10 +42,18 @@ public:
         
         addAndMakeVisible(tabbedComponent);
         
-        // Register as listener for all curve editors and sync initial curves
+        // Register as listener for all curve editors
         for (size_t i = 0; i < 4; ++i)
         {
             curveEditors[i]->addListener(this);
+            
+            // Restore saved curve points if available
+            const auto& savedPoints = processor.getLFOCurvePoints(i);
+            if (!savedPoints.empty())
+            {
+                curveEditors[i]->setControlPoints(savedPoints);
+            }
+            
             syncCurveToLFO(curveEditors[i].get(), i);
         }
     }
@@ -67,6 +75,9 @@ public:
         {
             if (curveEditors[i].get() == editor)
             {
+                // Save the curve points to processor
+                processor.setLFOCurvePoints(i, editor->getControlPoints());
+                
                 syncCurveToLFO(editor, i);
                 break;
             }

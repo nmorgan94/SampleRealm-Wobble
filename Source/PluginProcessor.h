@@ -6,6 +6,7 @@
 #include "synth/ADSREnvelope.h"
 #include "ModulationManager.h"
 #include "Parameters.h"
+#include "ui/CurveEditor.h"
 
 //==============================================================================
 enum class WaveformType
@@ -79,6 +80,19 @@ public:
     
     ModulationManager& getModulationManager() { return modulationManager; }
     
+    // LFO curve persistence
+    const std::vector<CurveEditor::ControlPoint>& getLFOCurvePoints(size_t lfoIndex) const
+    {
+        jassert(lfoIndex < 4);
+        return lfoCurvePoints[lfoIndex];
+    }
+    
+    void setLFOCurvePoints(size_t lfoIndex, const std::vector<CurveEditor::ControlPoint>& points)
+    {
+        jassert(lfoIndex < 4);
+        lfoCurvePoints[lfoIndex] = points;
+    }
+    
     juce::AudioProcessorValueTreeState apvts;
 
 private:
@@ -88,6 +102,7 @@ private:
     LFO lfos[4];
     ADSREnvelope envelopes[4];
     ModulationManager modulationManager;
+    std::array<std::vector<CurveEditor::ControlPoint>, 4> lfoCurvePoints;
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
     
