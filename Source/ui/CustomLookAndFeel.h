@@ -7,6 +7,15 @@ class CustomLookAndFeel : public juce::LookAndFeel_V4
 public:
 
     CustomLookAndFeel() {}
+    
+    static void styleRotarySlider(juce::Slider& slider)
+    {
+        slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        slider.setColour(juce::Slider::rotarySliderFillColourId, juce::Colour(0xff00ff41));
+        slider.setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff2a2a2a));
+        slider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff00ff41));
+    }
 
     [[nodiscard]] static juce::FontOptions orbitronRegular()
     {

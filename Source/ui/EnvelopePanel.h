@@ -4,6 +4,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "EnvelopeEditor.h"
 #include "CustomLFOTabButton.h"
+#include "CustomLookAndFeel.h"
 
 class AudioPluginAudioProcessor;
 
@@ -87,11 +88,7 @@ private:
     void setupSlider(juce::Slider& slider, juce::Label& label,
                      const juce::String& labelText, const juce::String& paramID)
     {
-        slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-        slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        slider.setColour(juce::Slider::rotarySliderFillColourId, juce::Colour(0xff00ff41));
-        slider.setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff2a2a2a));
-        slider.setColour(juce::Slider::thumbColourId, juce::Colour(0xff00ff41));
+        CustomLookAndFeel::styleRotarySlider(slider);
         slider.addListener(this);
         addAndMakeVisible(slider);
         
