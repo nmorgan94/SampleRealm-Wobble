@@ -13,7 +13,7 @@ namespace Parameters
         
         params.push_back(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID{"osc1_waveform", versionHint}, "Osc 1 Waveform",
-            juce::StringArray { "Sine", "Saw", "Square", "Triangle", "Pulse 25%", "Pulse 10%" }, 0));
+            juce::StringArray { "Sine", "Saw", "Square", "Triangle", "Pulse 25%", "Pulse 10%", "Formant Sine" }, 0));
         
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"osc1_gain", versionHint}, "Osc 1 Gain",
@@ -25,7 +25,7 @@ namespace Parameters
         
         params.push_back(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID{"osc2_waveform", versionHint}, "Osc 2 Waveform",
-            juce::StringArray { "Sine", "Saw", "Square", "Triangle", "Pulse 25%", "Pulse 10%" }, 1));
+            juce::StringArray { "Sine", "Saw", "Square", "Triangle", "Pulse 25%", "Pulse 10%", "Formant Sine" }, 1));
         
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"osc2_gain", versionHint}, "Osc 2 Gain",
@@ -37,7 +37,7 @@ namespace Parameters
         
         params.push_back(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID{"osc3_waveform", versionHint}, "Osc 3 Waveform",
-            juce::StringArray { "Sine", "Saw", "Square", "Triangle", "Pulse 25%", "Pulse 10%" }, 2));
+            juce::StringArray { "Sine", "Saw", "Square", "Triangle", "Pulse 25%", "Pulse 10%", "Formant Sine" }, 2));
         
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"osc3_gain", versionHint}, "Osc 3 Gain",

@@ -390,6 +390,17 @@ void AudioPluginAudioProcessor::generateWavetable(int oscIndex, WaveformType typ
             break;
         }
         
+        case WaveformType::FormantSine:
+        {
+            for (int i = 0; i < wavetableSize; ++i)
+            {
+                float phase = juce::MathConstants<float>::twoPi * i / wavetableSize;
+                float baseSine = std::sin(phase);
+                samples[i] = std::pow(std::abs(baseSine), 0.5f) * (baseSine > 0 ? 1 : -1);
+            }
+            break;
+        }
+        
     }
 }
 

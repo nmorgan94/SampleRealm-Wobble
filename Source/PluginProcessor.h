@@ -16,7 +16,8 @@ enum class WaveformType
     Square,
     Triangle,
     Pulse25,
-    Pulse10  
+    Pulse10,
+    FormantSine
 };
 
 //==============================================================================

@@ -36,6 +36,7 @@ public:
         waveformSelector.addItem("Triangle", 4);
         waveformSelector.addItem("Pulse 25%", 5);
         waveformSelector.addItem("Pulse 10%", 6);
+        waveformSelector.addItem("Formant Sine", 7);
         addAndMakeVisible(waveformSelector);
         
         addAndMakeVisible(gainSlider);
