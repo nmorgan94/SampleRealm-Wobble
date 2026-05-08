@@ -47,6 +47,16 @@ public:
         float modAmount = (lfoValue - 0.5f) * 2.0f * depth;
         return juce::jlimit(0.0f, 1.0f, baseValue + modAmount);
     }
+    
+    bool isLFOAssigned(int lfoIndex) const
+    {
+        for (const auto& pair : assignments)
+        {
+            if (pair.second.lfoIndex == lfoIndex)
+                return true;
+        }
+        return false;
+    }
 
 private:
     std::map<juce::String, ModulationAssignment> assignments;

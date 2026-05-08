@@ -88,7 +88,8 @@ private:
     void setupSlider(juce::Slider& slider, juce::Label& label,
                      const juce::String& labelText, const juce::String& paramID)
     {
-        CustomLookAndFeel::styleRotarySlider(slider);
+        slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
         slider.addListener(this);
         addAndMakeVisible(slider);
         

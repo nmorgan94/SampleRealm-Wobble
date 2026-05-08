@@ -19,6 +19,24 @@ public:
         rate = juce::jlimit(0.01f, 100.0f, rateHz);
     }
     
+    void setTriggerMode(bool shouldTrigger)
+    {
+        triggerMode = shouldTrigger;
+    }
+    
+    bool isTriggerMode() const
+    {
+        return triggerMode;
+    }
+    
+    void trigger()
+    {
+        if (triggerMode)
+        {
+            phase = 0.0f;
+        }
+    }
+    
     // Sync the lookup table from curve editor (call from message thread)
     void syncFromCurve(const std::function<float(float)>& curveFunction)
     {
@@ -66,6 +84,7 @@ private:
     double sampleRate = 44100.0;
     float phase = 0.0f;
     float rate = 1.0f;  // Hz
+    bool triggerMode = true;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LFO)
 };

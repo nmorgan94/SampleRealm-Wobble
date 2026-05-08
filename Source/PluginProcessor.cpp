@@ -41,6 +41,14 @@ float AudioPluginAudioProcessor::getFloatParam(const juce::String& paramID) cons
     return 0.0f;
 }
 
+int AudioPluginAudioProcessor::getChoiceParam(const juce::String& paramID) const
+{
+    if (auto* param = dynamic_cast<juce::AudioParameterChoice*>(apvts.getParameter(paramID)))
+        return param->getIndex();
+    jassertfalse;
+    return 0;
+}
+
 float AudioPluginAudioProcessor::getModulatedParam(const juce::String& paramID) const
 {
     float baseValue = getFloatParam(paramID);
@@ -227,11 +235,43 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
     
-    // Update LFO rates and advance all LFOs by buffer size
+    // Update LFO rates and modes
     updateLFOs();
     
+    bool hasActiveVoices = false;
+    for (int i = 0; i < synth.getNumVoices(); ++i)
+    {
+        if (synth.getVoice(i)->isVoiceActive())
+        {
+            hasActiveVoices = true;
+            break;
+        }
+    }
+    
     for (int i = 0; i < 4; ++i)
-        lfos[i].advance(buffer.getNumSamples());
+    {
+        bool isAssigned = modulationManager.isLFOAssigned(i);
+        
+        if (lfos[i].isTriggerMode())
+        {
+            if (isAssigned && hasActiveVoices)
+            {
+                lfos[i].advance(buffer.getNumSamples());
+            }
+            else
+            {
+                // Reset phase to start when no notes are playing or LFO not assigned
+                lfos[i].trigger();
+            }
+        }
+        else
+        {
+            if (isAssigned)
+            {
+                lfos[i].advance(buffer.getNumSamples());
+            }
+        }
+    }
 
     buffer.clear();
     
@@ -412,10 +452,16 @@ void AudioPluginAudioProcessor::updateWavetables()
 
 void AudioPluginAudioProcessor::updateLFOs()
 {
-    // Update LFO rates from parameters
+    // Update LFO rates and modes from parameters
     for (int i = 0; i < 4; ++i)
     {
-        float rate = getFloatParam("lfo" + juce::String(i + 1) + "_rate");
+        juce::String lfoPrefix = "lfo" + juce::String(i + 1) + "_";
+        
+        float rate = getFloatParam(lfoPrefix + "rate");
         lfos[i].setRate(rate);
+        
+        int modeIndex = getChoiceParam(lfoPrefix + "mode");
+        bool triggerMode = (modeIndex == 0);
+        lfos[i].setTriggerMode(triggerMode);
     }
 }

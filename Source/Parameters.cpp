@@ -43,17 +43,33 @@ namespace Parameters
             juce::ParameterID{"osc3_gain", versionHint}, "Osc 3 Gain",
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
         
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"lfo1_mode", versionHint}, "LFO 1 Mode",
+            juce::StringArray { "Trigger", "Sync" }, 0));
+        
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"lfo1_rate", versionHint}, "LFO 1 Rate",
             juce::NormalisableRange<float>(0.01f, 20.0f, 0.01f, 0.3f), 1.0f));
+        
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"lfo2_mode", versionHint}, "LFO 2 Mode",
+            juce::StringArray { "Trigger", "Sync" }, 0));
         
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"lfo2_rate", versionHint}, "LFO 2 Rate",
             juce::NormalisableRange<float>(0.01f, 20.0f, 0.01f, 0.3f), 2.0f));
         
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"lfo3_mode", versionHint}, "LFO 3 Mode",
+            juce::StringArray { "Trigger", "Sync" }, 0));
+        
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"lfo3_rate", versionHint}, "LFO 3 Rate",
             juce::NormalisableRange<float>(0.01f, 20.0f, 0.01f, 0.3f), 4.0f));
+        
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"lfo4_mode", versionHint}, "LFO 4 Mode",
+            juce::StringArray { "Trigger", "Sync" }, 0));
         
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"lfo4_rate", versionHint}, "LFO 4 Rate",

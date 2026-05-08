@@ -64,6 +64,7 @@ public:
     const juce::AudioBuffer<float>& getWavetable(int oscIndex) const;
     bool getBoolParam(const juce::String& paramID) const;
     float getFloatParam(const juce::String& paramID) const;
+    int getChoiceParam(const juce::String& paramID) const;
     float getModulatedParam(const juce::String& paramID) const;
     
     // Get LFO for external access (e.g., from editor)

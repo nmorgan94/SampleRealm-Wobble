@@ -37,8 +37,24 @@ public:
             container->addAndMakeVisible(editor.get());
             curveEditors.push_back(std::move(editor));
             
-            auto slider = std::make_unique<juce::Slider>();
-            CustomLookAndFeel::styleRotarySlider(*slider.get());
+            auto modeBox = std::make_unique<juce::ComboBox>();
+            modeBox->addItem("Trigger", 1);
+            modeBox->addItem("Sync", 2);
+            container->addAndMakeVisible(modeBox.get());
+            modeComboBoxes.push_back(std::move(modeBox));
+            
+            auto modeLabel = std::make_unique<juce::Label>();
+            modeLabel->setText("Mode", juce::dontSendNotification);
+            modeLabel->setJustificationType(juce::Justification::centred);
+            modeLabel->setColour(juce::Label::textColourId, juce::Colour(0xff00ff41));
+            container->addAndMakeVisible(modeLabel.get());
+            modeLabels.push_back(std::move(modeLabel));
+            
+            juce::String modeParamID = "lfo" + juce::String(i + 1) + "_mode";
+            modeAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+                processor.apvts, modeParamID, *modeComboBoxes.back()));
+            
+            auto slider = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
             container->addAndMakeVisible(slider.get());
             rateSliders.push_back(std::move(slider));
             
@@ -49,9 +65,9 @@ public:
             container->addAndMakeVisible(label.get());
             rateLabels.push_back(std::move(label));
             
-            juce::String paramID = "lfo" + juce::String(i + 1) + "_rate";
+            juce::String rateParamID = "lfo" + juce::String(i + 1) + "_rate";
             rateAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-                processor.apvts, paramID, *rateSliders.back()));
+                processor.apvts, rateParamID, *rateSliders.back()));
             
             tabContainers.push_back(std::move(container));
             
@@ -123,15 +139,20 @@ public:
             auto bounds = tabContainers[i]->getLocalBounds().reduced(10);
             
             // Curve editor takes top portion
-            int editorHeight = juce::roundToInt(bounds.getHeight() * 0.75f);
+            int editorHeight = juce::roundToInt(bounds.getHeight() * 0.7f);
             auto editorBounds = bounds.removeFromTop(editorHeight);
             curveEditors[i]->setBounds(editorBounds);
             
             bounds.removeFromTop(10); // Spacing
             
-            // Rate control at bottom
+            auto controlsArea = bounds;
+            
+            auto modeArea = controlsArea.removeFromLeft(controlsArea.getWidth() / 2).reduced(5);
+            modeLabels[i]->setBounds(modeArea.removeFromTop(16));
+            modeComboBoxes[i]->setBounds(modeArea.removeFromTop(24));
+            
             auto knobSize = 50;
-            auto knobBounds = bounds.withSizeKeepingCentre(knobSize, knobSize + 16);
+            auto knobBounds = controlsArea.withSizeKeepingCentre(knobSize, knobSize + 16);
             rateLabels[i]->setBounds(knobBounds.removeFromTop(16));
             rateSliders[i]->setBounds(knobBounds.withSizeKeepingCentre(knobSize, knobSize));
         }
@@ -148,6 +169,9 @@ private:
     CustomLFOTabbedComponent tabbedComponent;
     std::vector<std::unique_ptr<juce::Component>> tabContainers;
     std::vector<std::unique_ptr<CurveEditor>> curveEditors;
+    std::vector<std::unique_ptr<juce::ComboBox>> modeComboBoxes;
+    std::vector<std::unique_ptr<juce::Label>> modeLabels;
+    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>> modeAttachments;
     std::vector<std::unique_ptr<juce::Slider>> rateSliders;
     std::vector<std::unique_ptr<juce::Label>> rateLabels;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> rateAttachments;

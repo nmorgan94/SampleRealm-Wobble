@@ -41,6 +41,12 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
     
     envelope.setParameters(attack, decay, sustain, release);
     envelope.noteOn();
+    
+    // Trigger all LFOs that are in trigger mode
+    for (int i = 0; i < 4; ++i)
+    {
+        owner.getLFO(i).trigger();
+    }
 }
 
 void WavetableVoice::stopNote(float velocity, bool allowTailOff)
