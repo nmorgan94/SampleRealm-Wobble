@@ -75,6 +75,22 @@ namespace Parameters
             juce::ParameterID{"lfo4_rate", versionHint}, "LFO 4 Rate",
             juce::NormalisableRange<float>(0.01f, 20.0f, 0.01f, 0.3f), 8.0f));
         
+        // Filter parameters
+        params.push_back(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{"filter_enable", versionHint}, "Filter Enable", true));
+        
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"filter_mode", versionHint}, "Filter Mode",
+            juce::StringArray { "Lowpass", "Highpass", "Bandpass", "Notch" }, 0));
+        
+        params.push_back(std::make_unique<juce::AudioParameterFloat>(
+            juce::ParameterID{"filter_cutoff", versionHint}, "Filter Cutoff",
+            juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.3f), 1000.0f));
+        
+        params.push_back(std::make_unique<juce::AudioParameterFloat>(
+            juce::ParameterID{"filter_resonance", versionHint}, "Filter Resonance",
+            juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+        
         for (int i = 1; i <= 4; ++i)
         {
             juce::String envPrefix = "env" + juce::String(i);

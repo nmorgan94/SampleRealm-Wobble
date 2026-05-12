@@ -5,8 +5,14 @@
 class CustomLFOTabButton : public juce::TabBarButton
 {
 public:
-    CustomLFOTabButton(const juce::String& name, juce::TabbedButtonBar& bar, int lfoIdx)
-        : juce::TabBarButton(name, bar), lfoIndex(lfoIdx)
+    enum class SourceType
+    {
+        LFO,
+        Envelope
+    };
+    
+    CustomLFOTabButton(const juce::String& name, juce::TabbedButtonBar& bar, int index, SourceType type = SourceType::LFO)
+        : juce::TabBarButton(name, bar), sourceIndex(index), sourceType(type)
     {
     }
     
@@ -37,7 +43,8 @@ public:
             auto* container = juce::DragAndDropContainer::findParentDragContainerFor(this);
             if (container != nullptr)
             {
-                juce::var dragData = "LFO:" + juce::String(lfoIndex);
+                juce::String prefix = (sourceType == SourceType::LFO) ? "LFO:" : "ENV:";
+                juce::var dragData = prefix + juce::String(sourceIndex);
                 container->startDragging(dragData, this, juce::ScaledImage(createCrossImage()), true);
                 isDraggingHandle = false;
             }
@@ -86,7 +93,8 @@ private:
         return getLocalBounds().removeFromRight(18).contains(position);
     }
     
-    int lfoIndex;
+    int sourceIndex;
+    SourceType sourceType;
     bool isDraggingHandle = false;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CustomLFOTabButton)

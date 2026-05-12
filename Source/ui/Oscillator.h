@@ -96,18 +96,18 @@ public:
         
         enableButton.setBounds(controlBar.removeFromLeft(30));
         
-        controlBar.removeFromLeft(10);
+        controlBar.removeFromLeft(3);
         
-        auto labelWidth = 80;
+        auto labelWidth = 50;
         titleLabel.setBounds(controlBar.removeFromLeft(labelWidth));
         
-        controlBar.removeFromLeft(10);
+        controlBar.removeFromLeft(3);
         
         auto knobSize = 30;
-        auto selectorWidth = controlBar.getWidth() - knobSize - 10;
+        auto selectorWidth = controlBar.getWidth() - knobSize - 5;
         waveformSelector.setBounds(controlBar.removeFromLeft(selectorWidth));
         
-        controlBar.removeFromLeft(10); 
+        controlBar.removeFromLeft(5);
         
         gainSlider.setBounds(controlBar.removeFromLeft(knobSize).withHeight(knobSize));
     }

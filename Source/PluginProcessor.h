@@ -4,6 +4,7 @@
 #include "synth/WavetableVoice.h"
 #include "synth/LFO.h"
 #include "synth/ADSREnvelope.h"
+#include "synth/Filter.h"
 #include "ModulationManager.h"
 #include "Parameters.h"
 #include "ui/CurveEditor.h"
@@ -82,6 +83,8 @@ public:
     
     ModulationManager& getModulationManager() { return modulationManager; }
     
+    Filter& getFilter() { return filter; }
+    
     // LFO curve persistence
     const std::vector<CurveEditor::ControlPoint>& getLFOCurvePoints(size_t lfoIndex) const
     {
@@ -105,12 +108,14 @@ private:
     ADSREnvelope envelopes[4];
     ModulationManager modulationManager;
     std::array<std::vector<CurveEditor::ControlPoint>, 4> lfoCurvePoints;
+    Filter filter;
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
     
     void generateWavetable(int oscIndex, WaveformType type);
     void updateWavetables();
     void updateLFOs();
+    void updateFilter();
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

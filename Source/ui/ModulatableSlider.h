@@ -20,26 +20,28 @@ public:
     
     const juce::String& getParameterID() const { return parameterID; }
     
-    void setAssignedLFO(int lfoIndex)
+    void setAssignedSource(bool isLFO, int sourceIndex)
     {
-        assignedLFO = lfoIndex;
+        assignedIsLFO = isLFO;
+        assignedSourceIndex = sourceIndex;
         repaint();
     }
-    
-    int getAssignedLFO() const { return assignedLFO; }
     
     // DragAndDropTarget overrides
     bool isInterestedInDragSource(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails) override
     {
-        // Check if the drag source is an LFO tab
-        return dragSourceDetails.description.toString().startsWith("LFO:");
+        auto desc = dragSourceDetails.description.toString();
+        return desc.startsWith("LFO:") || desc.startsWith("ENV:");
     }
     
     void itemDropped(const juce::DragAndDropTarget::SourceDetails& dragSourceDetails) override
     {
-        int lfoIndex = dragSourceDetails.description.toString().substring(4).getIntValue();
-        if (lfoIndex >= 0 && lfoIndex < 4)
-            assignLFO(lfoIndex);
+        auto desc = dragSourceDetails.description.toString();
+        bool isLFO = desc.startsWith("LFO:");
+        int index = desc.substring(4).getIntValue();
+        
+        if (index >= 0 && index < 4)
+            assignModulator(isLFO, index);
     }
     
     void itemDragEnter(const juce::DragAndDropTarget::SourceDetails&) override
@@ -58,28 +60,22 @@ public:
     {
         juce::Slider::paint(g);
         
-        if (assignedLFO >= 0 && assignedLFO < 4)
+        if (assignedSourceIndex >= 0 && assignedSourceIndex < 4)
         {
-            auto bounds = getLocalBounds().toFloat();
-            auto indicatorSize = 8.0f;
-            auto indicatorBounds = juce::Rectangle<float>(
-                bounds.getRight() - indicatorSize - 2.0f,
-                bounds.getY() + 2.0f,
-                indicatorSize,
-                indicatorSize
-            );
+            auto indicator = getLocalBounds().removeFromTop(12).removeFromRight(16).translated(-2, 2).toFloat();
             
-            g.setColour(lfoColor);
-            g.fillEllipse(indicatorBounds);
+            g.setColour(juce::Colour(0xff2a2a2a));
+            g.fillRoundedRectangle(indicator, 2.0f);
             
-            g.setColour(juce::Colours::black);
-            g.setFont(10.0f);
-            g.drawText(juce::String(assignedLFO + 1), indicatorBounds, juce::Justification::centred);
+            g.setColour(modulationColor);
+            g.setFont(9.0f);
+            g.drawText((assignedIsLFO ? "L" : "E") + juce::String(assignedSourceIndex + 1),
+                      indicator, juce::Justification::centred);
         }
         
         if (isDragOver)
         {
-            g.setColour(lfoColor.withAlpha(0.3f));
+            g.setColour(modulationColor.withAlpha(0.3f));
             g.drawEllipse(getLocalBounds().toFloat().reduced(1.0f), 2.0f);
         }
     }
@@ -87,39 +83,45 @@ public:
     // Right-click to clear assignment
     void mouseDown(const juce::MouseEvent& event) override
     {
-        if (event.mods.isRightButtonDown() && assignedLFO >= 0)
+        if (event.mods.isRightButtonDown() && assignedSourceIndex >= 0)
             clearAssignment();
         else
             juce::Slider::mouseDown(event);
     }
 
 private:
-    static inline const juce::Colour lfoColor = juce::Colour(0xff00ff41);  // Neon green for all LFOs
+    static inline const juce::Colour modulationColor = juce::Colour(0xff00ff41);  // Neon green for all modulation
     
     AudioPluginAudioProcessor& processor;
     juce::String parameterID;
-    int assignedLFO = -1;
+    int assignedSourceIndex = -1;
+    bool assignedIsLFO = true;
     bool isDragOver = false;
     
-    void assignLFO(int lfoIndex)
+    void assignModulator(bool isLFO, int index)
     {
-        processor.getModulationManager().assignLFO(parameterID, lfoIndex);
-        setAssignedLFO(lfoIndex);
-        DBG("LFO " << (lfoIndex + 1) << " assigned to parameter: " << parameterID);
+        auto& manager = processor.getModulationManager();
+        isLFO ? manager.assignLFO(parameterID, index) : manager.assignEnvelope(parameterID, index);
+        setAssignedSource(isLFO, index);
+        DBG((isLFO ? "LFO " : "Envelope ") << (index + 1) << " assigned to " << parameterID);
     }
     
     void clearAssignment()
     {
         processor.getModulationManager().clearAssignment(parameterID);
-        setAssignedLFO(-1);
-        DBG("LFO assignment cleared from parameter: " << parameterID);
+        setAssignedSource(true, -1);
+        isDragOver = false;
+        repaint();
+        DBG("Modulation assignment cleared from parameter: " << parameterID);
     }
     
     void restoreAssignment()
     {
         auto assignment = processor.getModulationManager().getAssignment(parameterID);
         if (assignment.isAssigned())
-            setAssignedLFO(assignment.lfoIndex);
+        {
+            setAssignedSource(assignment.isLFO(), assignment.sourceIndex);
+        }
     }
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ModulatableSlider)

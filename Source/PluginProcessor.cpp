@@ -51,20 +51,27 @@ int AudioPluginAudioProcessor::getChoiceParam(const juce::String& paramID) const
 
 float AudioPluginAudioProcessor::getModulatedParam(const juce::String& paramID) const
 {
-    float baseValue = getFloatParam(paramID);
+    auto* param = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(paramID));
+    if (!param)
+        return 0.0f;
     
-    // Check if this parameter has an LFO assigned
+    float baseValue = param->get();
     auto assignment = modulationManager.getAssignment(paramID);
-    if (assignment.isAssigned())
-    {
-        // Get the LFO value (0.0 to 1.0)
-        float lfoValue = lfos[assignment.lfoIndex].getCurrentValue();
-        
-        // Apply modulation
-        return modulationManager.calculateModulatedValue(baseValue, lfoValue, assignment.depth);
-    }
     
-    return baseValue;
+    if (!assignment.isAssigned())
+        return baseValue;
+    
+    // Get modulation value from LFO or Envelope
+    float modulationValue = assignment.isLFO()
+        ? lfos[assignment.sourceIndex].getCurrentValue()
+        : envelopes[assignment.sourceIndex].getCurrentLevel();
+    
+    // Apply modulation
+    auto range = param->getNormalisableRange();
+    float normalized = range.convertTo0to1(baseValue);
+    float modulated = modulationManager.calculateModulatedValue(normalized, modulationValue, assignment.depth);
+    
+    return range.convertFrom0to1(modulated);
 }
 
 //==============================================================================
@@ -170,6 +177,13 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         envelopes[i].setParameters(attack, decay, sustain, release);
     }
     
+    juce::dsp::ProcessSpec spec;
+    spec.sampleRate = sampleRate;
+    spec.maximumBlockSize = static_cast<juce::uint32>(samplesPerBlock);
+    spec.numChannels = 2;
+    filter.prepare(spec);
+    updateFilter();
+    
     synth.clearVoices();
     synth.clearSounds();
     
@@ -238,6 +252,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     // Update LFO rates and modes
     updateLFOs();
     
+    updateFilter();
+    
     bool hasActiveVoices = false;
     for (int i = 0; i < synth.getNumVoices(); ++i)
     {
@@ -248,6 +264,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
     
+    // Advance LFOs
     for (int i = 0; i < 4; ++i)
     {
         bool isAssigned = modulationManager.isLFOAssigned(i);
@@ -272,10 +289,33 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             }
         }
     }
+    for (int i = 0; i < 4; ++i)
+    {
+        if (modulationManager.isEnvelopeAssigned(i) && envelopes[i].isActive())
+        {
+            // Advance per-sample like the per-voice envelope does
+            for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+            {
+                envelopes[i].getNextSample();
+            }
+        }
+    }
 
     buffer.clear();
     
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
+    
+    if (getBoolParam("filter_enable"))
+    {
+        for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
+        {
+            auto* channelData = buffer.getWritePointer(channel);
+            for (int sample = 0; sample < buffer.getNumSamples(); ++sample)
+            {
+                channelData[sample] = filter.processSample(channelData[sample], channel);
+            }
+        }
+    }
 }
 
 //==============================================================================
@@ -464,4 +504,16 @@ void AudioPluginAudioProcessor::updateLFOs()
         bool triggerMode = (modeIndex == 0);
         lfos[i].setTriggerMode(triggerMode);
     }
+}
+
+void AudioPluginAudioProcessor::updateFilter()
+{
+    int modeIndex = getChoiceParam("filter_mode");
+    filter.setMode(static_cast<FilterMode>(modeIndex));
+    
+    float cutoffHz = getModulatedParam("filter_cutoff");
+    filter.setCutoff(cutoffHz);
+    
+    float resonance = getModulatedParam("filter_resonance");
+    filter.setResonance(resonance);
 }

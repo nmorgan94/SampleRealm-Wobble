@@ -5,7 +5,7 @@
 class BaseCurveDisplay : public juce::Component
 {
 public:
-    BaseCurveDisplay()
+    BaseCurveDisplay(bool showGrid = true) : shouldShowGrid(showGrid)
     {
         setMouseCursor(juce::MouseCursor::NormalCursor);
     }
@@ -19,7 +19,8 @@ public:
         g.fillRoundedRectangle(bounds, 4.0f);
         
         // Draw grid lines
-        drawGrid(g, bounds);
+        if (shouldShowGrid)
+            drawGrid(g, bounds);
         
         // Generate curve path
         juce::Path curvePath;
@@ -91,6 +92,9 @@ protected:
             
         g.fillEllipse(x - 4, y - 4, 8, 8);
     }
+
+private:
+    bool shouldShowGrid = true;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(BaseCurveDisplay)
 };

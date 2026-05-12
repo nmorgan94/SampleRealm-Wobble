@@ -22,6 +22,9 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
         "OSC 3", processorRef.getWavetable(2));
     addAndMakeVisible(osc3.get());
     
+    filterPanel = std::make_unique<FilterPanel>(processorRef, processorRef.apvts);
+    addAndMakeVisible(filterPanel.get());
+    
     envelopePanel = std::make_unique<EnvelopePanel>(processorRef);
     addAndMakeVisible(envelopePanel.get());
     
@@ -59,8 +62,13 @@ void AudioPluginAudioProcessorEditor::resized()
     // Padding
     bounds.reduce(10, 5);
     
-    // Split into left (oscillators) and right (modulation) sections
+    // Split into left (oscillators), middle (filter), and right (modulation) sections
     auto rightSection = bounds.removeFromRight(350);
+    bounds.removeFromRight(10); 
+    
+    int filterWidth = 260;
+    
+    auto middleSection = bounds.removeFromRight(filterWidth);
     bounds.removeFromRight(10); // spacing
     
     // Left section: Stack oscillators vertically
@@ -73,6 +81,9 @@ void AudioPluginAudioProcessorEditor::resized()
     bounds.removeFromTop(10);
     
     osc3->setBounds(bounds);
+    
+    int filterHeight = middleSection.getHeight() / 2;
+    filterPanel->setBounds(middleSection.removeFromTop(filterHeight));
     
     int panelHeight = (rightSection.getHeight() - 10) / 2;
     

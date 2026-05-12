@@ -17,7 +17,7 @@ public:
     
     juce::TabBarButton* createTabButton(const juce::String& tabName, int tabIndex) override
     {
-        return new CustomLFOTabButton(tabName, getTabbedButtonBar(), tabIndex);
+        return new CustomLFOTabButton(tabName, getTabbedButtonBar(), tabIndex, CustomLFOTabButton::SourceType::Envelope);
     }
 };
 

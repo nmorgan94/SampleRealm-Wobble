@@ -6,15 +6,26 @@
 class ModulationManager
 {
 public:
+    enum class ModulationSource
+    {
+        None = 0,
+        LFO,
+        Envelope
+    };
+    
     struct ModulationAssignment
     {
-        int lfoIndex = -1;        // Which LFO (0-3, or -1 for none)
+        ModulationSource sourceType = ModulationSource::None;
+        int sourceIndex = -1;     // Which LFO or Envelope (0-3, or -1 for none)
         float depth = 1.0f;       // Modulation depth (0.0 to 1.0)
         
         ModulationAssignment() = default;
-        ModulationAssignment(int lfo, float d = 1.0f) : lfoIndex(lfo), depth(d) {}
+        ModulationAssignment(ModulationSource type, int index, float d = 1.0f)
+            : sourceType(type), sourceIndex(index), depth(d) {}
         
-        bool isAssigned() const { return lfoIndex >= 0 && lfoIndex < 4; }
+        bool isAssigned() const { return sourceType != ModulationSource::None && sourceIndex >= 0 && sourceIndex < 4; }
+        bool isLFO() const { return sourceType == ModulationSource::LFO; }
+        bool isEnvelope() const { return sourceType == ModulationSource::Envelope; }
     };
     
     ModulationManager() = default;
@@ -23,10 +34,16 @@ public:
     void assignLFO(const juce::String& parameterID, int lfoIndex, float depth = 1.0f)
     {
         if (lfoIndex >= 0 && lfoIndex < 4)
-            assignments[parameterID] = ModulationAssignment(lfoIndex, depth);
+            assignments[parameterID] = ModulationAssignment(ModulationSource::LFO, lfoIndex, depth);
     }
     
-    // Remove LFO assignment from a parameter
+    void assignEnvelope(const juce::String& parameterID, int envIndex, float depth = 1.0f)
+    {
+        if (envIndex >= 0 && envIndex < 4)
+            assignments[parameterID] = ModulationAssignment(ModulationSource::Envelope, envIndex, depth);
+    }
+    
+    // Remove assignment from a parameter
     void clearAssignment(const juce::String& parameterID)
     {
         assignments.erase(parameterID);
@@ -50,9 +67,19 @@ public:
     
     bool isLFOAssigned(int lfoIndex) const
     {
-        for (const auto& pair : assignments)
+        for (const auto& [paramID, assignment] : assignments)
         {
-            if (pair.second.lfoIndex == lfoIndex)
+            if (assignment.isLFO() && assignment.sourceIndex == lfoIndex)
+                return true;
+        }
+        return false;
+    }
+    
+    bool isEnvelopeAssigned(int envIndex) const
+    {
+        for (const auto& [paramID, assignment] : assignments)
+        {
+            if (assignment.isEnvelope() && assignment.sourceIndex == envIndex)
                 return true;
         }
         return false;

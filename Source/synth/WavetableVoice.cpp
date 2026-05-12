@@ -42,8 +42,24 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
     envelope.setParameters(attack, decay, sustain, release);
     envelope.noteOn();
     
+    // Trigger all modulation envelopes
+    for (size_t i = 0; i < 4; ++i)
+    {
+        auto& env = owner.getEnvelope(i);
+        env.setSampleRate(getSampleRate());
+        
+        juce::String envPrefix = "env" + juce::String(static_cast<int>(i + 1)) + "_";
+        float envAttack = owner.getFloatParam(envPrefix + "attack");
+        float envDecay = owner.getFloatParam(envPrefix + "decay");
+        float envSustain = owner.getFloatParam(envPrefix + "sustain");
+        float envRelease = owner.getFloatParam(envPrefix + "release");
+        
+        env.setParameters(envAttack, envDecay, envSustain, envRelease);
+        env.noteOn();
+    }
+    
     // Trigger all LFOs that are in trigger mode
-    for (int i = 0; i < 4; ++i)
+    for (size_t i = 0; i < 4; ++i)
     {
         owner.getLFO(i).trigger();
     }
@@ -57,12 +73,25 @@ void WavetableVoice::stopNote(float velocity, bool allowTailOff)
     {
         // Trigger envelope release
         envelope.noteOff();
+        
+        // Trigger release for all modulation envelopes
+        for (size_t i = 0; i < 4; ++i)
+        {
+            owner.getEnvelope(i).noteOff();
+        }
     }
     else
     {
         // Immediately stop the note
         clearCurrentNote();
         envelope.reset();
+        
+        // Reset all modulation envelopes
+        for (size_t i = 0; i < 4; ++i)
+        {
+            owner.getEnvelope(i).reset();
+        }
+        
         level = 0.0;
     }
 }
