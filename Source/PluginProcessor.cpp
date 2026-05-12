@@ -49,6 +49,14 @@ int AudioPluginAudioProcessor::getChoiceParam(const juce::String& paramID) const
     return 0;
 }
 
+int AudioPluginAudioProcessor::getIntParam(const juce::String& paramID) const
+{
+    if (auto* param = dynamic_cast<juce::AudioParameterInt*>(apvts.getParameter(paramID)))
+        return param->get();
+    jassertfalse;
+    return 0;
+}
+
 float AudioPluginAudioProcessor::getModulatedParam(const juce::String& paramID) const
 {
     auto* param = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(paramID));

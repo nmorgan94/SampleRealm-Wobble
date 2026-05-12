@@ -20,6 +20,7 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
 {
     juce::ignoreUnused(sound, currentPitchWheelPosition);
     
+    currentMidiNote = midiNoteNumber;
     currentFrequency = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
     
     level = velocity;
@@ -119,14 +120,20 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
     
     bool oscEnabled[3];
     float oscGain[3];
+    double oscPhaseIncrement[3];
     
     for (int osc = 0; osc < 3; ++osc)
     {
         juce::String enableParamID = "osc" + juce::String(osc + 1) + "_enable";
         juce::String gainParamID = "osc" + juce::String(osc + 1) + "_gain";
+        juce::String pitchParamID = "osc" + juce::String(osc + 1) + "_pitch";
         
         oscEnabled[osc] = owner.getBoolParam(enableParamID);
         oscGain[osc] = owner.getModulatedParam(gainParamID);
+        
+        int pitchOffset = owner.getIntParam(pitchParamID);
+        double oscFrequency = juce::MidiMessage::getMidiNoteInHertz(currentMidiNote + pitchOffset);
+        oscPhaseIncrement[osc] = oscFrequency * wavetableSize / getSampleRate();
     }
     
     for (int channel = 0; channel < outputBuffer.getNumChannels(); ++channel)
@@ -145,7 +152,7 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
                     mixedSample += getInterpolatedSample(osc, localPhases[osc]) * oscGain[osc];
                     
                     // Increment phase and wrap
-                    localPhases[osc] += phaseIncrement;
+                    localPhases[osc] += oscPhaseIncrement[osc];
                     while (localPhases[osc] >= wavetableSize)
                         localPhases[osc] -= wavetableSize;
                 }
@@ -163,7 +170,7 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
     {
         if (oscEnabled[osc])
         {
-            currentPhases[osc] += phaseIncrement * numSamples;
+            currentPhases[osc] += oscPhaseIncrement[osc] * numSamples;
             while (currentPhases[osc] >= wavetableSize)
                 currentPhases[osc] -= wavetableSize;
         }

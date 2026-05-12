@@ -34,6 +34,7 @@ private:
     double phaseIncrement = 0.0;
     float level = 0.0f;
     double currentFrequency = 0.0;
+    int currentMidiNote = 0;
     
     ADSREnvelope envelope;
 

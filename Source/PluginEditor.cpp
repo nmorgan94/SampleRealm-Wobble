@@ -8,17 +8,17 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     setLookAndFeel(&customLookAndFeel);
     
     osc1 = std::make_unique<Oscillator>(
-        processorRef, processorRef.apvts, "osc1_enable", "osc1_waveform", "osc1_gain",
+        processorRef, processorRef.apvts, "osc1_enable", "osc1_waveform", "osc1_gain", "osc1_pitch",
         "OSC 1", processorRef.getWavetable(0));
     addAndMakeVisible(osc1.get());
     
     osc2 = std::make_unique<Oscillator>(
-        processorRef, processorRef.apvts, "osc2_enable", "osc2_waveform", "osc2_gain",
+        processorRef, processorRef.apvts, "osc2_enable", "osc2_waveform", "osc2_gain", "osc2_pitch",
         "OSC 2", processorRef.getWavetable(1));
     addAndMakeVisible(osc2.get());
     
     osc3 = std::make_unique<Oscillator>(
-        processorRef, processorRef.apvts, "osc3_enable", "osc3_waveform", "osc3_gain",
+        processorRef, processorRef.apvts, "osc3_enable", "osc3_waveform", "osc3_gain", "osc3_pitch",
         "OSC 3", processorRef.getWavetable(2));
     addAndMakeVisible(osc3.get());
     

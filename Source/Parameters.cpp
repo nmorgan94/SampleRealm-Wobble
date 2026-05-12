@@ -19,6 +19,10 @@ namespace Parameters
             juce::ParameterID{"osc1_gain", versionHint}, "Osc 1 Gain",
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
         
+        params.push_back(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID{"osc1_pitch", versionHint}, "Osc 1 Pitch",
+            -24, 24, 0));
+        
         // Oscillator 2
         params.push_back(std::make_unique<juce::AudioParameterBool>(
             juce::ParameterID{"osc2_enable", versionHint}, "Osc 2 Enable", false));
@@ -31,6 +35,10 @@ namespace Parameters
             juce::ParameterID{"osc2_gain", versionHint}, "Osc 2 Gain",
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
         
+        params.push_back(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID{"osc2_pitch", versionHint}, "Osc 2 Pitch",
+            -24, 24, 0));
+        
         // Oscillator 3
         params.push_back(std::make_unique<juce::AudioParameterBool>(
             juce::ParameterID{"osc3_enable", versionHint}, "Osc 3 Enable", false));
@@ -42,6 +50,10 @@ namespace Parameters
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"osc3_gain", versionHint}, "Osc 3 Gain",
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.7f));
+        
+        params.push_back(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID{"osc3_pitch", versionHint}, "Osc 3 Pitch",
+            -24, 24, 0));
         
         params.push_back(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID{"lfo1_mode", versionHint}, "LFO 1 Mode",

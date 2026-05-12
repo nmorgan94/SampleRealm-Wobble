@@ -6,6 +6,78 @@
 
 // Forward declaration
 class AudioPluginAudioProcessor;
+class SemitoneDisplay : public juce::Component
+{
+public:
+    SemitoneDisplay() = default;
+    
+    void paint(juce::Graphics& g) override
+    {
+        auto bounds = getLocalBounds();
+        
+        // Background
+        g.setColour(juce::Colour(0xff2a2a2a));
+        g.fillRoundedRectangle(bounds.toFloat(), 4.0f);
+        
+        // Border
+        g.setColour(juce::Colour(0xff3a3a3a));
+        g.drawRoundedRectangle(bounds.toFloat(), 4.0f, 1.0f);
+        
+        auto labelBounds = bounds.removeFromLeft(bounds.getWidth() / 2);
+        
+        g.setColour(juce::Colours::grey);
+        g.setFont(juce::FontOptions(10.0f, juce::Font::bold));
+        g.drawText("SEM", labelBounds, juce::Justification::centred);
+        
+        g.setColour(juce::Colours::white);
+        g.setFont(juce::FontOptions(12.0f, juce::Font::bold));
+        juce::String valueText = (value >= 0 ? "+" : "") + juce::String(value);
+        g.drawText(valueText, bounds, juce::Justification::centred);
+    }
+    
+    void mouseDown(const juce::MouseEvent& e) override
+    {
+        dragStartY = e.y;
+        dragStartValue = value;
+    }
+    
+    void mouseDoubleClick(const juce::MouseEvent&) override
+    {
+        setValue(0);
+        if (onValueChange)
+            onValueChange(0);
+    }
+    
+    void mouseDrag(const juce::MouseEvent& e) override
+    {
+        int deltaY = dragStartY - e.y;
+        int newValue = juce::jlimit(-24, 24, dragStartValue + (deltaY / 3));
+        
+        if (newValue != value)
+        {
+            value = newValue;
+            repaint();
+            
+            if (onValueChange)
+                onValueChange(value);
+        }
+    }
+    
+    void setValue(int newValue)
+    {
+        value = juce::jlimit(-24, 24, newValue);
+        repaint();
+    }
+    
+    int getValue() const { return value; }
+    
+    std::function<void(int)> onValueChange;
+    
+private:
+    int value = 0;
+    int dragStartY = 0;
+    int dragStartValue = 0;
+};
 
 class Oscillator : public juce::Component,
                    private juce::Timer,
@@ -17,9 +89,12 @@ public:
                const juce::String& enableParamID,
                const juce::String& waveformParamID,
                const juce::String& gainParamID,
+               const juce::String& pitchParamID,
                const juce::String& labelText,
                const juce::AudioBuffer<float>& wavetableRef)
         : wavetable(wavetableRef),
+          apvtsRef(apvts),
+          pitchParamIDStr(pitchParamID),
           gainSlider(proc, gainParamID)
     {
         
@@ -40,6 +115,17 @@ public:
         addAndMakeVisible(waveformSelector);
         
         addAndMakeVisible(gainSlider);
+        
+        addAndMakeVisible(semitoneDisplay);
+        
+        semitoneDisplay.onValueChange = [&apvts, pitchParamID](int newValue)
+        {
+            if (auto* param = apvts.getParameter(pitchParamID))
+                param->setValueNotifyingHost(param->convertTo0to1(static_cast<float>(newValue)));
+        };
+        
+        if (auto* param = dynamic_cast<juce::AudioParameterInt*>(apvts.getParameter(pitchParamID)))
+            semitoneDisplay.setValue(param->get());
         
         enableAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
             apvts, enableParamID, enableButton);
@@ -69,6 +155,8 @@ public:
         waveformSelector.setEnabled(isEnabled);
         gainSlider.setAlpha(alpha);
         gainSlider.setEnabled(isEnabled);
+        semitoneDisplay.setAlpha(alpha);
+        semitoneDisplay.setEnabled(isEnabled);
         
         // Draw background
         g.setColour(juce::Colour(0xff1a1a1a));
@@ -79,7 +167,7 @@ public:
         g.drawRoundedRectangle(bounds.toFloat(), 8.0f, 2.0f);
         
         auto waveformArea = bounds.reduced(10);
-        waveformArea.removeFromTop(40);
+        waveformArea.removeFromTop(60);
         
         // Draw waveform background
         g.setColour(juce::Colours::black.withAlpha(alpha));
@@ -110,6 +198,12 @@ public:
         controlBar.removeFromLeft(5);
         
         gainSlider.setBounds(controlBar.removeFromLeft(knobSize).withHeight(knobSize));
+        
+        bounds.removeFromTop(5);
+        auto pitchRow = bounds.removeFromTop(20);
+        
+        auto pitchWidth = 60;
+        semitoneDisplay.setBounds(pitchRow.removeFromLeft(pitchWidth));
     }
     
     void timerCallback() override
@@ -167,11 +261,14 @@ private:
     }
     
     const juce::AudioBuffer<float>& wavetable;
+    juce::AudioProcessorValueTreeState& apvtsRef;
+    juce::String pitchParamIDStr;
     
     juce::Label titleLabel;
     juce::ToggleButton enableButton;
     juce::ComboBox waveformSelector;
     ModulatableSlider gainSlider;
+    SemitoneDisplay semitoneDisplay;
     
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> waveformAttachment;
