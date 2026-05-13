@@ -2,24 +2,13 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "synth/WavetableVoice.h"
+#include "synth/WavetableGenerator.h"
 #include "synth/LFO.h"
 #include "synth/ADSREnvelope.h"
 #include "synth/Filter.h"
 #include "ModulationManager.h"
 #include "Parameters.h"
 #include "ui/CurveEditor.h"
-
-//==============================================================================
-enum class WaveformType
-{
-    Sine = 0,
-    Saw,
-    Square,
-    Triangle,
-    Pulse25,
-    Pulse10,
-    FormantSine
-};
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -115,7 +104,6 @@ private:
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
     
-    void generateWavetable(int oscIndex, WaveformType type);
     void updateWavetables();
     void updateLFOs();
     void updateFilter();

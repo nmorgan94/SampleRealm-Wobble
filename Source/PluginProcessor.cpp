@@ -160,7 +160,9 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     {
         currentWaveformTypes[i] = static_cast<WaveformType>(
             static_cast<int>(apvts.getRawParameterValue(waveformParamIDs[i])->load()));
-        generateWavetable(i, currentWaveformTypes[i]);
+        
+        wavetables[i].setSize(1, WavetableGenerator::getWavetableSize());
+        WavetableGenerator::generateWavetable(wavetables[i], currentWaveformTypes[i]);
     }
     
     // Initialize LFOs
@@ -267,7 +269,7 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         if (newWaveformType != currentWaveformTypes[i])
         {
             currentWaveformTypes[i] = newWaveformType;
-            generateWavetable(i, newWaveformType);
+            WavetableGenerator::generateWavetable(wavetables[i], newWaveformType);
         }
     }
     
@@ -425,91 +427,10 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 
 
 //==============================================================================
-void AudioPluginAudioProcessor::generateWavetable(int oscIndex, WaveformType type)
-{
-    const int wavetableSize = 2048;
-    wavetables[oscIndex].setSize(1, wavetableSize);
-    
-    auto* samples = wavetables[oscIndex].getWritePointer(0);
-    
-    switch (type)
-    {
-        case WaveformType::Sine:
-        {
-            for (int i = 0; i < wavetableSize; ++i)
-            {
-                auto phase = juce::MathConstants<float>::twoPi * i / wavetableSize;
-                samples[i] = std::sin(phase);
-            }
-            break;
-        }
-        
-        case WaveformType::Saw:
-        {
-            for (int i = 0; i < wavetableSize; ++i)
-            {
-                samples[i] = 2.0f * i / wavetableSize - 1.0f;
-            }
-            break;
-        }
-        
-        case WaveformType::Square:
-        {
-            for (int i = 0; i < wavetableSize; ++i)
-            {
-                samples[i] = (i < wavetableSize / 2) ? 1.0f : -1.0f;
-            }
-            break;
-        }
-        
-        case WaveformType::Triangle:
-        {
-            for (int i = 0; i < wavetableSize; ++i)
-            {
-                if (i < wavetableSize / 2)
-                    samples[i] = -1.0f + 4.0f * i / wavetableSize;
-                else
-                    samples[i] = 3.0f - 4.0f * i / wavetableSize;
-            }
-            break;
-        }
-        
-        case WaveformType::Pulse25:
-        {
-            for (int i = 0; i < wavetableSize; ++i)
-            {
-                samples[i] = (i < wavetableSize / 4) ? 1.0f : -1.0f;
-            }
-            break;
-        }
-        
-        case WaveformType::Pulse10:
-        {
-            for (int i = 0; i < wavetableSize; ++i)
-            {
-                samples[i] = (i < wavetableSize / 10) ? 1.0f : -1.0f;
-            }
-            break;
-        }
-        
-        case WaveformType::FormantSine:
-        {
-            for (int i = 0; i < wavetableSize; ++i)
-            {
-                float phase = juce::MathConstants<float>::twoPi * i / wavetableSize;
-                float baseSine = std::sin(phase);
-                samples[i] = std::pow(std::abs(baseSine), 0.5f) * (baseSine > 0 ? 1 : -1);
-            }
-            break;
-        }
-        
-    }
-}
-
 void AudioPluginAudioProcessor::updateWavetables()
 {
     for (int i = 0; i < 3; ++i)
-        generateWavetable(i, currentWaveformTypes[i]);
+        WavetableGenerator::generateWavetable(wavetables[i], currentWaveformTypes[i]);
 }
 
 void AudioPluginAudioProcessor::updateLFOs()

@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "ModulatableSlider.h"
+#include "../synth/WavetableGenerator.h"
 
 // Forward declaration
 class AudioPluginAudioProcessor;
@@ -105,13 +106,9 @@ public:
         enableButton.addListener(this);
         addAndMakeVisible(enableButton);
         
-        waveformSelector.addItem("Sine", 1);
-        waveformSelector.addItem("Saw", 2);
-        waveformSelector.addItem("Square", 3);
-        waveformSelector.addItem("Triangle", 4);
-        waveformSelector.addItem("Pulse 25%", 5);
-        waveformSelector.addItem("Pulse 10%", 6);
-        waveformSelector.addItem("Formant Sine", 7);
+        auto waveformNames = WavetableGenerator::getWaveformNames();
+        for (int i = 0; i < waveformNames.size(); ++i)
+            waveformSelector.addItem(waveformNames[i], i + 1);
         addAndMakeVisible(waveformSelector);
         
         addAndMakeVisible(gainSlider);
