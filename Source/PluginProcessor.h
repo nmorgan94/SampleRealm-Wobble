@@ -86,6 +86,8 @@ public:
     
     Filter& getFilter() { return filter; }
     
+    juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
+    
     // LFO curve persistence
     const std::vector<CurveEditor::ControlPoint>& getLFOCurvePoints(size_t lfoIndex) const
     {

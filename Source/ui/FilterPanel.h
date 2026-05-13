@@ -62,14 +62,20 @@ public:
             apvts, "filter_resonance", resonanceSlider);
         
         addAndMakeVisible(responseDisplay);
-        
-        startTimerHz(30);
     }
     
     ~FilterPanel() override
     {
         stopTimer();
         enableButton.removeListener(this);
+    }
+    
+    void visibilityChanged() override
+    {
+        if (isVisible() && processor.getBoolParam("filter_enable"))
+            startTimerHz(30);
+        else
+            stopTimer();
     }
     
     void timerCallback() override
@@ -153,8 +159,7 @@ private:
         resonanceSlider.setEnabled(isEnabled);
         responseDisplay.setEnabled(isEnabled);
         
-
-        if (isEnabled)
+        if (isEnabled && isVisible())
             startTimerHz(30);
         else
             stopTimer();

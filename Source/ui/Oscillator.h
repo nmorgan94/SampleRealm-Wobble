@@ -123,10 +123,10 @@ public:
             if (auto* param = apvts.getParameter(pitchParamID))
                 param->setValueNotifyingHost(param->convertTo0to1(static_cast<float>(newValue)));
         };
-        
+
         if (auto* param = dynamic_cast<juce::AudioParameterInt*>(apvts.getParameter(pitchParamID)))
             semitoneDisplay.setValue(param->get());
-        
+
         enableAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
             apvts, enableParamID, enableButton);
         waveformAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
@@ -134,13 +134,20 @@ public:
         gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
             apvts, gainParamID, gainSlider);
         
-        startTimerHz(30);
     }
     
     ~Oscillator() override
     {
         enableButton.removeListener(this);
         stopTimer();
+    }
+    
+    void visibilityChanged() override
+    {
+        if (isVisible())
+            startTimerHz(30);
+        else
+            stopTimer();
     }
     
     void paint(juce::Graphics& g) override

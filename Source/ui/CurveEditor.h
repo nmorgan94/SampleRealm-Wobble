@@ -41,8 +41,18 @@ public:
     void setLFO(LFO* lfoToVisualize)
     {
         lfo = lfoToVisualize;
-        if (lfo != nullptr)
-            startTimerHz(60); 
+        updateTimerState();
+    }
+    
+    void visibilityChanged() override
+    {
+        updateTimerState();
+    }
+    
+    void updateTimerState()
+    {
+        if (isVisible() && lfo != nullptr)
+            startTimerHz(60);
         else
             stopTimer();
     }

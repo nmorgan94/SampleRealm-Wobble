@@ -76,8 +76,7 @@ float AudioPluginAudioProcessor::getModulatedParam(const juce::String& paramID) 
     
     // Apply modulation
     auto range = param->getNormalisableRange();
-    float normalized = range.convertTo0to1(baseValue);
-    float modulated = modulationManager.calculateModulatedValue(normalized, modulationValue, assignment.depth);
+    float modulated = modulationManager.calculateModulatedValue(modulationValue, assignment.minValue, assignment.maxValue);
     
     return range.convertFrom0to1(modulated);
 }

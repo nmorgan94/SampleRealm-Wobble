@@ -7,7 +7,8 @@
 class AudioPluginAudioProcessor;
 
 class ModulatableSlider : public juce::Slider,
-                          public juce::DragAndDropTarget
+                          public juce::DragAndDropTarget,
+                          private juce::Timer
 {
 public:
     ModulatableSlider(AudioPluginAudioProcessor& proc, const juce::String& paramID)
@@ -16,14 +17,22 @@ public:
         setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
         restoreAssignment();
+        
+        onValueChange = [this]() { updateModulationRangeFromSlider(); };
     }
     
     const juce::String& getParameterID() const { return parameterID; }
+    
+    void visibilityChanged() override
+    {
+        updateTimerState();
+    }
     
     void setAssignedSource(bool isLFO, int sourceIndex)
     {
         assignedIsLFO = isLFO;
         assignedSourceIndex = sourceIndex;
+        updateTimerState();
         repaint();
     }
     
@@ -44,49 +53,82 @@ public:
             assignModulator(isLFO, index);
     }
     
-    void itemDragEnter(const juce::DragAndDropTarget::SourceDetails&) override
-    {
-        isDragOver = true;
-        repaint();
-    }
-    
-    void itemDragExit(const juce::DragAndDropTarget::SourceDetails&) override
-    {
-        isDragOver = false;
-        repaint();
-    }
-    
     void paint(juce::Graphics& g) override
     {
         juce::Slider::paint(g);
         
         if (assignedSourceIndex >= 0 && assignedSourceIndex < 4)
         {
-            auto indicator = getLocalBounds().removeFromTop(12).removeFromRight(16).translated(-2, 2).toFloat();
-            
-            g.setColour(juce::Colour(0xff2a2a2a));
-            g.fillRoundedRectangle(indicator, 2.0f);
-            
-            g.setColour(modulationColor);
-            g.setFont(9.0f);
-            g.drawText((assignedIsLFO ? "L" : "E") + juce::String(assignedSourceIndex + 1),
-                      indicator, juce::Justification::centred);
-        }
-        
-        if (isDragOver)
-        {
-            g.setColour(modulationColor.withAlpha(0.3f));
-            g.drawEllipse(getLocalBounds().toFloat().reduced(1.0f), 2.0f);
+            drawModulationArc(g);
+            drawModulationBadge(g);
         }
     }
     
-    // Right-click to clear assignment
     void mouseDown(const juce::MouseEvent& event) override
     {
-        if (event.mods.isRightButtonDown() && assignedSourceIndex >= 0)
-            clearAssignment();
+        if (assignedSourceIndex >= 0)
+        {
+            auto indicator = getLocalBounds().removeFromTop(12).removeFromRight(16).translated(-2, 2);
+            
+            if (indicator.contains(event.getPosition()))
+            {
+                if (event.mods.isRightButtonDown())
+                {
+                    showModulationMenu();
+                    return;
+                }
+                else if (event.mods.isLeftButtonDown())
+                {
+                    isDraggingModulation = true;
+                    modDragStart = event.getPosition();
+                    return;
+                }
+            }
+            else if (event.mods.isRightButtonDown())
+            {
+                showModulationMenu();
+                return;
+            }
+        }
+        
+        juce::Slider::mouseDown(event);
+    }
+    
+    void mouseDrag(const juce::MouseEvent& event) override
+    {
+        if (isDraggingModulation)
+        {
+            int dragDistance = event.getPosition().y - modDragStart.y;
+            float delta = -dragDistance * 0.003f;
+            
+            auto assignment = processor.getModulationManager().getAssignment(parameterID);
+            
+            if (auto* param = getParameter())
+            {
+                auto range = param->getNormalisableRange();
+                float normalizedBase = range.convertTo0to1(static_cast<float>(getValue()));
+                
+                calculateModulationRange(assignment, normalizedBase, delta);
+                
+                auto& manager = processor.getModulationManager();
+                if (assignment.isLFO())
+                    manager.assignLFO(parameterID, assignment.sourceIndex, assignment.minValue, assignment.maxValue);
+                else
+                    manager.assignEnvelope(parameterID, assignment.sourceIndex, assignment.minValue, assignment.maxValue);
+                
+                repaint();
+            }
+        }
         else
-            juce::Slider::mouseDown(event);
+        {
+            juce::Slider::mouseDrag(event);
+        }
+    }
+    
+    void mouseUp(const juce::MouseEvent& event) override
+    {
+        isDraggingModulation = false;
+        juce::Slider::mouseUp(event);
     }
 
 private:
@@ -96,21 +138,165 @@ private:
     juce::String parameterID;
     int assignedSourceIndex = -1;
     bool assignedIsLFO = true;
-    bool isDragOver = false;
+    bool isDraggingModulation = false;
+    juce::Point<int> modDragStart;
+    
+    void updateTimerState()
+    {
+        if (isVisible() && assignedSourceIndex >= 0)
+            startTimerHz(30);
+        else
+            stopTimer();
+    }
+    
+    void timerCallback() override
+    {
+        if (assignedSourceIndex >= 0)
+            repaint();
+    }
+    
+    juce::AudioParameterFloat* getParameter()
+    {
+        return dynamic_cast<juce::AudioParameterFloat*>(processor.getAPVTS().getParameter(parameterID));
+    }
+    
+    void calculateModulationRange(ModulationManager::ModulationAssignment& assignment, float normalizedBase, float delta)
+    {
+        if (assignment.isEnvelope())
+        {
+            assignment.minValue = normalizedBase;
+            assignment.maxValue = juce::jmin(1.0f, normalizedBase + juce::jlimit(0.05f, 1.0f - normalizedBase,
+                                            (assignment.maxValue - assignment.minValue) + delta));
+        }
+        else
+        {
+            float currentDepth = (assignment.maxValue - assignment.minValue) * 0.5f;
+            float desiredDepth = juce::jlimit(0.05f, 1.0f, currentDepth + delta);
+            float roomBelow = normalizedBase, roomAbove = 1.0f - normalizedBase;
+            
+            if (desiredDepth <= juce::jmin(roomBelow, roomAbove))
+            {
+                assignment.minValue = normalizedBase - desiredDepth;
+                assignment.maxValue = normalizedBase + desiredDepth;
+            }
+            else
+            {
+                float actualDepth = juce::jmin(desiredDepth, juce::jmax(roomBelow, roomAbove));
+                assignment.minValue = juce::jmax(0.0f, normalizedBase - actualDepth);
+                assignment.maxValue = juce::jmin(1.0f, normalizedBase + actualDepth);
+            }
+        }
+    }
+    
+    void updateModulationRangeFromSlider()
+    {
+        if (assignedSourceIndex < 0)
+            return;
+            
+        auto assignment = processor.getModulationManager().getAssignment(parameterID);
+        if (auto* param = getParameter())
+        {
+            auto range = param->getNormalisableRange();
+            float normalizedBase = range.convertTo0to1(static_cast<float>(getValue()));
+            
+            calculateModulationRange(assignment, normalizedBase, 0.0f);
+            
+            auto& manager = processor.getModulationManager();
+            if (assignment.isLFO())
+                manager.assignLFO(parameterID, assignment.sourceIndex, assignment.minValue, assignment.maxValue);
+            else
+                manager.assignEnvelope(parameterID, assignment.sourceIndex, assignment.minValue, assignment.maxValue);
+        }
+    }
     
     void assignModulator(bool isLFO, int index)
     {
-        auto& manager = processor.getModulationManager();
-        isLFO ? manager.assignLFO(parameterID, index) : manager.assignEnvelope(parameterID, index);
+        if (auto* param = getParameter())
+        {
+            auto& manager = processor.getModulationManager();
+            float normalizedBase = param->getNormalisableRange().convertTo0to1(static_cast<float>(getValue()));
+            float depth = 0.25f;
+            
+            float minVal, maxVal;
+            if (isLFO)
+            {
+                minVal = juce::jlimit(0.0f, 1.0f, normalizedBase - depth);
+                maxVal = juce::jmin(1.0f, normalizedBase + depth);
+                manager.assignLFO(parameterID, index, minVal, maxVal);
+            }
+            else
+            {
+                minVal = normalizedBase;
+                maxVal = juce::jmin(1.0f, normalizedBase + depth);
+                manager.assignEnvelope(parameterID, index, minVal, maxVal);
+            }
+        }
+        
         setAssignedSource(isLFO, index);
         DBG((isLFO ? "LFO " : "Envelope ") << (index + 1) << " assigned to " << parameterID);
     }
+    
+    void showModulationMenu()
+    {
+        juce::PopupMenu menu;
+        menu.addItem(1, "Clear Assignment");
+        
+        menu.showMenuAsync(juce::PopupMenu::Options(), [this](int result) {
+            if (result == 1)
+                clearAssignment();
+        });
+    }
+    void drawModulationArc(juce::Graphics& g)
+    {
+        auto* param = getParameter();
+        if (!param) return;
+        
+        auto bounds = getLocalBounds().toFloat();
+        auto centre = bounds.getCentre();
+        float sliderRadius = juce::jmin(bounds.getWidth(), bounds.getHeight()) * 0.5f;
+        float trackWidth = sliderRadius * 0.15f;
+        float arcRadius = sliderRadius - trackWidth * 0.5f;
+        
+        auto rotaryParams = getRotaryParameters();
+        float angleRange = rotaryParams.endAngleRadians - rotaryParams.startAngleRadians;
+        auto assignment = processor.getModulationManager().getAssignment(parameterID);
+        
+        // Draw arc
+        float minAngle = rotaryParams.startAngleRadians + (assignment.minValue * angleRange);
+        float maxAngle = rotaryParams.startAngleRadians + (assignment.maxValue * angleRange);
+        juce::Path arcPath;
+        arcPath.addCentredArc(centre.x, centre.y, arcRadius, arcRadius, 0.0f, minAngle, maxAngle, true);
+        g.setColour(modulationColor.withAlpha(0.5f));
+        g.strokePath(arcPath, juce::PathStrokeType(trackWidth, juce::PathStrokeType::curved, juce::PathStrokeType::rounded));
+        
+        // Draw animated indicator
+        float currentMod = processor.getModulatedParam(parameterID);
+        float currentAngle = rotaryParams.startAngleRadians + (param->getNormalisableRange().convertTo0to1(currentMod) * angleRange);
+        float x = centre.x + arcRadius * std::cos(currentAngle - juce::MathConstants<float>::halfPi);
+        float y = centre.y + arcRadius * std::sin(currentAngle - juce::MathConstants<float>::halfPi);
+        
+        g.setColour(modulationColor.withAlpha(0.7f));
+        g.fillEllipse(x - 3, y - 3, 6, 6);
+        g.setColour(juce::Colours::white.withAlpha(0.8f));
+        g.fillEllipse(x - 1.5f, y - 1.5f, 3, 3);
+    }
+    
+    void drawModulationBadge(juce::Graphics& g)
+    {
+        auto indicator = getLocalBounds().removeFromTop(12).removeFromRight(16).translated(-2, 2).toFloat();
+        g.setColour(juce::Colour(0xff2a2a2a));
+        g.fillRoundedRectangle(indicator, 2.0f);
+        g.setColour(modulationColor);
+        g.setFont(9.0f);
+        g.drawText((assignedIsLFO ? "L" : "E") + juce::String(assignedSourceIndex + 1),
+                  indicator, juce::Justification::centred);
+    }
+    
     
     void clearAssignment()
     {
         processor.getModulationManager().clearAssignment(parameterID);
         setAssignedSource(true, -1);
-        isDragOver = false;
         repaint();
         DBG("Modulation assignment cleared from parameter: " << parameterID);
     }

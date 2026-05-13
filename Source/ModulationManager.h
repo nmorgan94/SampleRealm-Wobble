@@ -17,11 +17,12 @@ public:
     {
         ModulationSource sourceType = ModulationSource::None;
         int sourceIndex = -1;     // Which LFO or Envelope (0-3, or -1 for none)
-        float depth = 1.0f;       // Modulation depth (0.0 to 1.0)
+        float minValue = 0.0f;
+        float maxValue = 1.0f;
         
         ModulationAssignment() = default;
-        ModulationAssignment(ModulationSource type, int index, float d = 1.0f)
-            : sourceType(type), sourceIndex(index), depth(d) {}
+        ModulationAssignment(ModulationSource type, int index, float minV = 0.0f, float maxV = 1.0f)
+            : sourceType(type), sourceIndex(index), minValue(minV), maxValue(maxV) {}
         
         bool isAssigned() const { return sourceType != ModulationSource::None && sourceIndex >= 0 && sourceIndex < 4; }
         bool isLFO() const { return sourceType == ModulationSource::LFO; }
@@ -31,16 +32,16 @@ public:
     ModulationManager() = default;
     
     // Assign an LFO to a parameter
-    void assignLFO(const juce::String& parameterID, int lfoIndex, float depth = 1.0f)
+    void assignLFO(const juce::String& parameterID, int lfoIndex, float minValue = 0.0f, float maxValue = 1.0f)
     {
         if (lfoIndex >= 0 && lfoIndex < 4)
-            assignments[parameterID] = ModulationAssignment(ModulationSource::LFO, lfoIndex, depth);
+            assignments[parameterID] = ModulationAssignment(ModulationSource::LFO, lfoIndex, minValue, maxValue);
     }
     
-    void assignEnvelope(const juce::String& parameterID, int envIndex, float depth = 1.0f)
+    void assignEnvelope(const juce::String& parameterID, int envIndex, float minValue = 0.0f, float maxValue = 1.0f)
     {
         if (envIndex >= 0 && envIndex < 4)
-            assignments[parameterID] = ModulationAssignment(ModulationSource::Envelope, envIndex, depth);
+            assignments[parameterID] = ModulationAssignment(ModulationSource::Envelope, envIndex, minValue, maxValue);
     }
     
     // Remove assignment from a parameter
@@ -58,11 +59,10 @@ public:
         return ModulationAssignment();
     }
     
-    float calculateModulatedValue(float baseValue, float lfoValue, float depth) const
+    float calculateModulatedValue(float lfoValue, float minValue, float maxValue) const
     {
-        // Bipolar modulation: LFO 0.5 = no change, 0.0 = -depth, 1.0 = +depth
-        float modAmount = (lfoValue - 0.5f) * 2.0f * depth;
-        return juce::jlimit(0.0f, 1.0f, baseValue + modAmount);
+        float modulated = minValue + lfoValue * (maxValue - minValue);
+        return juce::jlimit(0.0f, 1.0f, modulated);
     }
     
     bool isLFOAssigned(int lfoIndex) const
