@@ -9,6 +9,7 @@
 #include "ModulationManager.h"
 #include "Parameters.h"
 #include "ui/CurveEditor.h"
+#include "LFOCurveState.h"
 
 //==============================================================================
 class AudioPluginAudioProcessor final : public juce::AudioProcessor
@@ -78,31 +79,36 @@ public:
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
     
     // LFO curve persistence
-    const std::vector<CurveEditor::ControlPoint>& getLFOCurvePoints(size_t lfoIndex) const
+    std::vector<CurveEditor::ControlPoint> getLFOCurvePoints(size_t lfoIndex) const
     {
         jassert(lfoIndex < 4);
-        return lfoCurvePoints[lfoIndex];
+        return lfoCurveState.getCurvePoints(lfoIndex);
     }
     
     void setLFOCurvePoints(size_t lfoIndex, const std::vector<CurveEditor::ControlPoint>& points)
     {
         jassert(lfoIndex < 4);
-        lfoCurvePoints[lfoIndex] = points;
+        lfoCurveState.setCurvePoints(lfoIndex, points);
     }
     
     juce::AudioProcessorValueTreeState apvts;
 
 private:
+    static inline const juce::Identifier modMatrixStateID { "ModMatrix" };
+    static inline const juce::Identifier lfoCurvesStateID { "LFOCurves" };
     //==============================================================================
+    juce::UndoManager undoManager;
     juce::Synthesiser synth;
     juce::AudioBuffer<float> wavetables[3];
     LFO lfos[4];
     ADSREnvelope envelopes[4];
     ModulationManager modulationManager;
-    std::array<std::vector<CurveEditor::ControlPoint>, 4> lfoCurvePoints;
+    LFOCurveState lfoCurveState;
     Filter filter;
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
+    
+    static juce::ValueTree getOrCreateStateChild(juce::ValueTree parent, const juce::Identifier& childID);
     
     void updateWavetables();
     void updateLFOs();

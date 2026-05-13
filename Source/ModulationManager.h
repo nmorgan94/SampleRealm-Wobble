@@ -1,7 +1,6 @@
 #pragma once
 
 #include <juce_audio_processors/juce_audio_processors.h>
-#include <map>
 
 class ModulationManager
 {
@@ -16,13 +15,9 @@ public:
     struct ModulationAssignment
     {
         ModulationSource sourceType = ModulationSource::None;
-        int sourceIndex = -1;     // Which LFO or Envelope (0-3, or -1 for none)
+        int sourceIndex = -1;
         float minValue = 0.0f;
         float maxValue = 1.0f;
-        
-        ModulationAssignment() = default;
-        ModulationAssignment(ModulationSource type, int index, float minV = 0.0f, float maxV = 1.0f)
-            : sourceType(type), sourceIndex(index), minValue(minV), maxValue(maxV) {}
         
         bool isAssigned() const { return sourceType != ModulationSource::None && sourceIndex >= 0 && sourceIndex < 4; }
         bool isLFO() const { return sourceType == ModulationSource::LFO; }
@@ -31,62 +26,132 @@ public:
     
     ModulationManager() = default;
     
-    // Assign an LFO to a parameter
+    void initialise(juce::ValueTree treeState, juce::UndoManager* treeUndoManager)
+    {
+        state = treeState;
+        undoManager = treeUndoManager;
+    }
+    
     void assignLFO(const juce::String& parameterID, int lfoIndex, float minValue = 0.0f, float maxValue = 1.0f)
     {
-        if (lfoIndex >= 0 && lfoIndex < 4)
-            assignments[parameterID] = ModulationAssignment(ModulationSource::LFO, lfoIndex, minValue, maxValue);
+        if (isValidSourceIndex(lfoIndex))
+            setAssignment(parameterID, ModulationSource::LFO, lfoIndex, minValue, maxValue);
     }
     
     void assignEnvelope(const juce::String& parameterID, int envIndex, float minValue = 0.0f, float maxValue = 1.0f)
     {
-        if (envIndex >= 0 && envIndex < 4)
-            assignments[parameterID] = ModulationAssignment(ModulationSource::Envelope, envIndex, minValue, maxValue);
+        if (isValidSourceIndex(envIndex))
+            setAssignment(parameterID, ModulationSource::Envelope, envIndex, minValue, maxValue);
     }
     
-    // Remove assignment from a parameter
     void clearAssignment(const juce::String& parameterID)
     {
-        assignments.erase(parameterID);
+        auto assignmentNode = findAssignment(parameterID);
+        if (assignmentNode.isValid())
+            state.removeChild(assignmentNode, undoManager);
     }
     
-    // Get the assignment for a parameter
     ModulationAssignment getAssignment(const juce::String& parameterID) const
     {
-        auto it = assignments.find(parameterID);
-        if (it != assignments.end())
-            return it->second;
-        return ModulationAssignment();
+        return toAssignment(findAssignment(parameterID));
     }
     
-    float calculateModulatedValue(float lfoValue, float minValue, float maxValue) const
+    float calculateModulatedValue(float sourceValue, float minValue, float maxValue) const
     {
-        float modulated = minValue + lfoValue * (maxValue - minValue);
-        return juce::jlimit(0.0f, 1.0f, modulated);
+        return juce::jlimit(0.0f, 1.0f, minValue + sourceValue * (maxValue - minValue));
     }
     
     bool isLFOAssigned(int lfoIndex) const
     {
-        for (const auto& [paramID, assignment] : assignments)
-        {
-            if (assignment.isLFO() && assignment.sourceIndex == lfoIndex)
-                return true;
-        }
-        return false;
+        return isSourceAssigned(ModulationSource::LFO, lfoIndex);
     }
     
     bool isEnvelopeAssigned(int envIndex) const
     {
-        for (const auto& [paramID, assignment] : assignments)
-        {
-            if (assignment.isEnvelope() && assignment.sourceIndex == envIndex)
-                return true;
-        }
-        return false;
+        return isSourceAssigned(ModulationSource::Envelope, envIndex);
     }
 
 private:
-    std::map<juce::String, ModulationAssignment> assignments;
+    struct IDs
+    {
+        static inline const juce::Identifier assignment { "Assignment" };
+        static inline const juce::Identifier parameterID { "parameterID" };
+        static inline const juce::Identifier sourceType { "sourceType" };
+        static inline const juce::Identifier sourceIndex { "sourceIndex" };
+        static inline const juce::Identifier minValue { "minValue" };
+        static inline const juce::Identifier maxValue { "maxValue" };
+    };
+    
+    static bool isValidSourceIndex(int index)
+    {
+        return index >= 0 && index < 4;
+    }
+    
+    ModulationAssignment toAssignment(juce::ValueTree assignmentNode) const
+    {
+        if (! assignmentNode.isValid())
+            return {};
+        
+        return {
+            static_cast<ModulationSource>(static_cast<int>(assignmentNode.getProperty(IDs::sourceType, 0))),
+            static_cast<int>(assignmentNode.getProperty(IDs::sourceIndex, -1)),
+            static_cast<float>(assignmentNode.getProperty(IDs::minValue, 0.0f)),
+            static_cast<float>(assignmentNode.getProperty(IDs::maxValue, 1.0f))
+        };
+    }
+    
+    juce::ValueTree findAssignment(const juce::String& parameterID) const
+    {
+        if (! state.isValid())
+            return {};
+        
+        for (auto child : state)
+        {
+            if (child.hasType(IDs::assignment)
+                && child[IDs::parameterID].toString() == parameterID)
+                return child;
+        }
+        
+        return {};
+    }
+    
+    bool isSourceAssigned(ModulationSource sourceType, int sourceIndex) const
+    {
+        if (! state.isValid())
+            return false;
+        
+        for (auto child : state)
+        {
+            if (child.hasType(IDs::assignment)
+                && static_cast<int>(child.getProperty(IDs::sourceType, 0)) == static_cast<int>(sourceType)
+                && static_cast<int>(child.getProperty(IDs::sourceIndex, -1)) == sourceIndex)
+                return true;
+        }
+        
+        return false;
+    }
+    
+    void setAssignment(const juce::String& parameterID, ModulationSource sourceType, int sourceIndex, float minValue, float maxValue)
+    {
+        if (! state.isValid())
+            return;
+        
+        auto assignmentNode = findAssignment(parameterID);
+        if (! assignmentNode.isValid())
+        {
+            assignmentNode = juce::ValueTree(IDs::assignment);
+            assignmentNode.setProperty(IDs::parameterID, parameterID, undoManager);
+            state.addChild(assignmentNode, -1, undoManager);
+        }
+        
+        assignmentNode.setProperty(IDs::sourceType, static_cast<int>(sourceType), undoManager);
+        assignmentNode.setProperty(IDs::sourceIndex, sourceIndex, undoManager);
+        assignmentNode.setProperty(IDs::minValue, minValue, undoManager);
+        assignmentNode.setProperty(IDs::maxValue, maxValue, undoManager);
+    }
+    
+    juce::ValueTree state;
+    juce::UndoManager* undoManager = nullptr;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ModulationManager)
 };

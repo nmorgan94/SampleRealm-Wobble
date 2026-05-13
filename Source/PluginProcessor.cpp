@@ -13,6 +13,11 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                        ),
        apvts (*this, nullptr, "Parameters", Parameters::createLayout())
 {
+    auto modMatrixState = getOrCreateStateChild(apvts.state, modMatrixStateID);
+    auto lfoCurvesState = getOrCreateStateChild(apvts.state, lfoCurvesStateID);
+    
+    modulationManager.initialise(modMatrixState, &undoManager);
+    lfoCurveState.initialise(lfoCurvesState, &undoManager);
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -356,28 +361,8 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 //==============================================================================
 void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    // Save APVTS state
     auto state = apvts.copyState();
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
-    
-    // Add LFO curve data to XML
-    for (size_t i = 0; i < 4; ++i)
-    {
-        auto* lfoElement = xml->createNewChildElement("LFO" + juce::String(i + 1));
-        
-        if (lfoElement != nullptr)
-        {
-            const auto& points = lfoCurvePoints[i];
-            lfoElement->setAttribute("numPoints", juce::String(points.size()));
-            
-            for (size_t j = 0; j < points.size(); ++j)
-            {
-                lfoElement->setAttribute("point" + juce::String(j) + "_x", points[j].x);
-                lfoElement->setAttribute("point" + juce::String(j) + "_y", points[j].y);
-            }
-        }
-    }
-    
     copyXmlToBinary (*xml, destData);
 }
 
@@ -387,34 +372,14 @@ void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeI
     
     if (xmlState.get() != nullptr)
     {
-        // Restore APVTS state
         if (xmlState->hasTagName (apvts.state.getType()))
             apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
         
-        // Restore LFO curve data
-        for (size_t i = 0; i < 4; ++i)
-        {
-            auto* lfoElement = xmlState->getChildByName("LFO" + juce::String(i + 1));
-            
-            if (lfoElement != nullptr)
-            {
-                auto numPoints = lfoElement->getIntAttribute("numPoints", 0);
-                
-                if (numPoints > 0)
-                {
-                    std::vector<CurveEditor::ControlPoint> points;
-                    
-                    for (int j = 0; j < numPoints; ++j)
-                    {
-                        float x = (float)lfoElement->getDoubleAttribute("point" + juce::String(j) + "_x", 0.0);
-                        float y = (float)lfoElement->getDoubleAttribute("point" + juce::String(j) + "_y", 0.5);
-                        points.push_back(CurveEditor::ControlPoint(x, y));
-                    }
-                    
-                    lfoCurvePoints[i] = points;
-                }
-            }
-        }
+        auto modMatrixState = getOrCreateStateChild(apvts.state, modMatrixStateID);
+        auto lfoCurvesState = getOrCreateStateChild(apvts.state, lfoCurvesStateID);
+        
+        modulationManager.initialise(modMatrixState, &undoManager);
+        lfoCurveState.initialise(lfoCurvesState, &undoManager);
     }
 }
 
@@ -427,6 +392,18 @@ juce::AudioProcessor* JUCE_CALLTYPE createPluginFilter()
 
 
 //==============================================================================
+juce::ValueTree AudioPluginAudioProcessor::getOrCreateStateChild(juce::ValueTree parent, const juce::Identifier& childID)
+{
+    auto child = parent.getChildWithName(childID);
+    if (! child.isValid())
+    {
+        child = juce::ValueTree(childID);
+        parent.addChild(child, -1, nullptr);
+    }
+    
+    return child;
+}
+
 void AudioPluginAudioProcessor::updateWavetables()
 {
     for (int i = 0; i < 3; ++i)
