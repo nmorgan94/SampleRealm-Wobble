@@ -33,13 +33,31 @@ public:
                          bool /*shouldDrawButtonAsHighlighted*/, bool /*shouldDrawButtonAsDown*/) override
     {
         auto bounds = button.getLocalBounds().toFloat().reduced(2.0f);
-        auto size = juce::jmin(bounds.getWidth(), bounds.getHeight());
         
+        // Style for SYNC buttons only
+        if (button.getButtonText() == "SYNC")
+        {
+            auto neonGreen = juce::Colour(0xff00ff41);
+            auto greyBorder = juce::Colour(0xff3a3a3a);
+            
+            // Draw rounded rectangle border
+            g.setColour(button.getToggleState() ? neonGreen : greyBorder);
+            g.drawRoundedRectangle(bounds, 3.0f, 1.5f);
+            
+            // Draw text
+            g.setColour(button.getToggleState() ? neonGreen : juce::Colour(0xff666666));
+            g.setFont(orbitronBold().withHeight(10.0f));
+            g.drawText("SYNC", bounds, juce::Justification::centred);
+            
+            return; 
+        }
+        
+        auto size = juce::jmin(bounds.getWidth(), bounds.getHeight());
         auto circleBounds = bounds.withSizeKeepingCentre(size, size);
         
-        auto neonGreen = juce::Colour(0xff00ff41);         
-        auto darkGreen = juce::Colour(0xff00aa2e);        
-        auto greyBorder = juce::Colour(0xff2a2a2a);       
+        auto neonGreen = juce::Colour(0xff00ff41);
+        auto darkGreen = juce::Colour(0xff00aa2e);
+        auto greyBorder = juce::Colour(0xff2a2a2a);
         
         // Draw outer circle (border)
         g.setColour(button.getToggleState() ? neonGreen : greyBorder);

@@ -241,6 +241,21 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     for (auto i = totalNumInputChannels; i < totalNumOutputChannels; ++i)
         buffer.clear (i, 0, buffer.getNumSamples());
 
+    auto playHead = getPlayHead();
+    if (playHead != nullptr)
+    {
+        if (auto positionInfo = playHead->getPosition())
+        {
+            double bpm = positionInfo->getBpm().orFallback(120.0);
+            auto timeSig = positionInfo->getTimeSignature().orFallback(juce::AudioPlayHead::TimeSignature());
+            
+            for (int i = 0; i < 4; ++i)
+            {
+                lfos[i].setTempoInfo(bpm, timeSig.numerator, timeSig.denominator);
+            }
+        }
+    }
+
     // Check if any oscillator settings have changed
     const juce::String waveformParamIDs[3] = { "osc1_waveform", "osc2_waveform", "osc3_waveform" };
     
@@ -510,6 +525,12 @@ void AudioPluginAudioProcessor::updateLFOs()
         int modeIndex = getChoiceParam(lfoPrefix + "mode");
         bool triggerMode = (modeIndex == 0);
         lfos[i].setTriggerMode(triggerMode);
+        
+        bool tempoSync = getBoolParam(lfoPrefix + "sync");
+        lfos[i].setTempoSync(tempoSync);
+        
+        int tempoDivIndex = getChoiceParam(lfoPrefix + "sync_rate");
+        lfos[i].setTempoDivision(tempoDivIndex);
     }
 }
 

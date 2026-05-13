@@ -54,6 +54,17 @@ public:
             modeAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
                 processor.apvts, modeParamID, *modeComboBoxes.back()));
             
+            auto syncButton = std::make_unique<juce::ToggleButton>("SYNC");
+            syncButton->setColour(juce::ToggleButton::textColourId, juce::Colour(0xff00ff41));
+            syncButton->setColour(juce::ToggleButton::tickColourId, juce::Colour(0xff00ff41));
+            syncButton->setColour(juce::ToggleButton::tickDisabledColourId, juce::Colour(0xff666666));
+            container->addAndMakeVisible(syncButton.get());
+            syncButtons.push_back(std::move(syncButton));
+            
+            juce::String syncParamID = "lfo" + juce::String(i + 1) + "_sync";
+            syncAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+                processor.apvts, syncParamID, *syncButtons.back()));
+            
             auto slider = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
             container->addAndMakeVisible(slider.get());
             rateSliders.push_back(std::move(slider));
@@ -68,6 +79,12 @@ public:
             juce::String rateParamID = "lfo" + juce::String(i + 1) + "_rate";
             rateAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
                 processor.apvts, rateParamID, *rateSliders.back()));
+            
+            // Add listener to sync button to switch parameter
+            syncButtons.back()->onClick = [this, i]()
+            {
+                updateLFORateControl(i);
+            };
             
             tabContainers.push_back(std::move(container));
             
@@ -151,10 +168,18 @@ public:
             modeLabels[i]->setBounds(modeArea.removeFromTop(16));
             modeComboBoxes[i]->setBounds(modeArea.removeFromTop(24));
             
-            auto knobSize = 50;
-            auto knobBounds = controlsArea.withSizeKeepingCentre(knobSize, knobSize + 16);
-            rateLabels[i]->setBounds(knobBounds.removeFromTop(16));
-            rateSliders[i]->setBounds(knobBounds.withSizeKeepingCentre(knobSize, knobSize));
+            int knobSize = 50;
+            int knobX = controlsArea.getX() + 10;
+            int labelY = controlsArea.getY() - 10;
+            int knobY = controlsArea.getY() + 5;
+
+            rateLabels[i]->setBounds(knobX, labelY, knobSize, 16);
+            
+            rateSliders[i]->setBounds(knobX, knobY, knobSize, knobSize);
+            
+            int syncButtonWidth = 35;
+            int syncButtonHeight = 12;
+            syncButtons[i]->setBounds(knobX + knobSize + 10, knobY + 5, syncButtonWidth, syncButtonHeight);
         }
     }
     
@@ -163,6 +188,26 @@ private:
     {
         auto curveFunction = [editor](float x) { return editor->getValueAt(x); };
         processor.getLFO(lfoIndex).syncFromCurve(curveFunction);
+    }
+    
+    void updateLFORateControl(size_t lfoIndex)
+    {
+        const bool syncEnabled = syncButtons[lfoIndex]->getToggleState();
+        
+        rateAttachments[lfoIndex].reset();
+
+        juce::String paramID;
+        if (syncEnabled)
+        {
+            paramID = "lfo" + juce::String(lfoIndex + 1) + "_sync_rate";
+        }
+        else
+        {
+            paramID = "lfo" + juce::String(lfoIndex + 1) + "_rate";
+        }
+        
+        rateAttachments[lfoIndex] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            processor.apvts, paramID, *rateSliders[lfoIndex]);
     }
     
     AudioPluginAudioProcessor& processor;
@@ -175,6 +220,8 @@ private:
     std::vector<std::unique_ptr<juce::Slider>> rateSliders;
     std::vector<std::unique_ptr<juce::Label>> rateLabels;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> rateAttachments;
+    std::vector<std::unique_ptr<juce::ToggleButton>> syncButtons;
+    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>> syncAttachments;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LFOPanel)
 };

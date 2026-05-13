@@ -63,6 +63,15 @@ namespace Parameters
             juce::ParameterID{"lfo1_rate", versionHint}, "LFO 1 Rate",
             juce::NormalisableRange<float>(0.01f, 20.0f, 0.01f, 0.3f), 1.0f));
         
+        params.push_back(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{"lfo1_sync", versionHint}, "LFO 1 Sync", false));
+        
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"lfo1_sync_rate", versionHint}, "LFO 1 Sync Rate",
+            juce::StringArray { "1/16", "1/16T", "1/16D", "1/8", "1/8T", "1/8D",
+                               "1/4", "1/4T", "1/4D", "1/2", "1/2T", "1/2D",
+                               "1 Bar", "2 Bars", "4 Bars" }, 6));
+        
         params.push_back(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID{"lfo2_mode", versionHint}, "LFO 2 Mode",
             juce::StringArray { "Trigger", "Sync" }, 0));
@@ -70,6 +79,15 @@ namespace Parameters
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"lfo2_rate", versionHint}, "LFO 2 Rate",
             juce::NormalisableRange<float>(0.01f, 20.0f, 0.01f, 0.3f), 2.0f));
+        
+        params.push_back(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{"lfo2_sync", versionHint}, "LFO 2 Sync", false));
+        
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"lfo2_sync_rate", versionHint}, "LFO 2 Sync Rate",
+            juce::StringArray { "1/16", "1/16T", "1/16D", "1/8", "1/8T", "1/8D",
+                               "1/4", "1/4T", "1/4D", "1/2", "1/2T", "1/2D",
+                               "1 Bar", "2 Bars", "4 Bars" }, 6));
         
         params.push_back(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID{"lfo3_mode", versionHint}, "LFO 3 Mode",
@@ -79,6 +97,15 @@ namespace Parameters
             juce::ParameterID{"lfo3_rate", versionHint}, "LFO 3 Rate",
             juce::NormalisableRange<float>(0.01f, 20.0f, 0.01f, 0.3f), 4.0f));
         
+        params.push_back(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{"lfo3_sync", versionHint}, "LFO 3 Sync", false));
+        
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"lfo3_sync_rate", versionHint}, "LFO 3 Sync Rate",
+            juce::StringArray { "1/16", "1/16T", "1/16D", "1/8", "1/8T", "1/8D",
+                               "1/4", "1/4T", "1/4D", "1/2", "1/2T", "1/2D",
+                               "1 Bar", "2 Bars", "4 Bars" }, 6));
+        
         params.push_back(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID{"lfo4_mode", versionHint}, "LFO 4 Mode",
             juce::StringArray { "Trigger", "Sync" }, 0));
@@ -86,6 +113,15 @@ namespace Parameters
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"lfo4_rate", versionHint}, "LFO 4 Rate",
             juce::NormalisableRange<float>(0.01f, 20.0f, 0.01f, 0.3f), 8.0f));
+        
+        params.push_back(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{"lfo4_sync", versionHint}, "LFO 4 Sync", false));
+        
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"lfo4_sync_rate", versionHint}, "LFO 4 Sync Rate",
+            juce::StringArray { "1/16", "1/16T", "1/16D", "1/8", "1/8T", "1/8D",
+                               "1/4", "1/4T", "1/4D", "1/2", "1/2T", "1/2D",
+                               "1 Bar", "2 Bars", "4 Bars" }, 6));
         
         // Filter parameters
         params.push_back(std::make_unique<juce::AudioParameterBool>(
