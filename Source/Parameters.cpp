@@ -84,6 +84,10 @@ namespace Parameters
             juce::ParameterID{"filter_resonance", versionHint}, "Filter Resonance",
             juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
         
+        params.push_back(std::make_unique<juce::AudioParameterFloat>(
+            juce::ParameterID{"master_gain", versionHint}, "Master Gain",
+            juce::NormalisableRange<float>(-24.0f, 6.0f, 0.1f), 0.0f));
+        
         for (int i = 1; i <= 4; ++i)
         {
             juce::String envPrefix = "env" + juce::String(i);

@@ -6,6 +6,7 @@
 #include "ui/EnvelopePanel.h"
 #include "ui/LFOPanel.h"
 #include "ui/FilterPanel.h"
+#include "ui/MasterMeter.h"
 
 //==============================================================================
 class AudioPluginAudioProcessorEditor final : public juce::AudioProcessorEditor,
@@ -27,6 +28,7 @@ private:
     std::unique_ptr<FilterPanel> filterPanel;
     std::unique_ptr<EnvelopePanel> envelopePanel;
     std::unique_ptr<LFOPanel> lfoPanel;
+    std::unique_ptr<MasterMeter> masterMeter;
     
     // This reference is provided as a quick way for your editor to
     // access the processor object that created it.

@@ -154,9 +154,9 @@ void AudioPluginAudioProcessor::changeProgramName (int index, const juce::String
 //==============================================================================
 void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPerBlock)
 {
-    juce::ignoreUnused (samplesPerBlock);
-    
     synth.setCurrentPlaybackSampleRate(sampleRate);
+    
+    outputMeterState.reset();
     
     // Generate the initial wavetables for all oscillators
     const juce::String waveformParamIDs[3] = { "osc1_waveform", "osc2_waveform", "osc3_waveform" };
@@ -345,6 +345,11 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
             }
         }
     }
+    
+    const float masterGainDb = getFloatParam("master_gain");
+    buffer.applyGain(juce::Decibels::decibelsToGain(masterGainDb));
+    
+    outputMeterState.processBlock(buffer);
 }
 
 //==============================================================================

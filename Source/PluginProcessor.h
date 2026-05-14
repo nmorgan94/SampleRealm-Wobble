@@ -6,6 +6,7 @@
 #include "synth/LFO.h"
 #include "synth/ADSREnvelope.h"
 #include "synth/Filter.h"
+#include "synth/OutputMeterState.h"
 #include "ModulationManager.h"
 #include "Parameters.h"
 #include "ui/CurveEditor.h"
@@ -78,6 +79,16 @@ public:
     
     juce::AudioProcessorValueTreeState& getAPVTS() { return apvts; }
     
+    float getOutputMeterLevel(int channel) const
+    {
+        return outputMeterState.getLevel(channel);
+    }
+    
+    bool isOutputClipping(int channel) const
+    {
+        return outputMeterState.isClipping(channel);
+    }
+    
     // LFO curve persistence
     std::vector<CurveEditor::ControlPoint> getLFOCurvePoints(size_t lfoIndex) const
     {
@@ -105,6 +116,7 @@ private:
     ModulationManager modulationManager;
     LFOCurveState lfoCurveState;
     Filter filter;
+    OutputMeterState outputMeterState;
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
     

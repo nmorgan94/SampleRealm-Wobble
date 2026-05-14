@@ -30,6 +30,9 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     
     lfoPanel = std::make_unique<LFOPanel>(processorRef);
     addAndMakeVisible(lfoPanel.get());
+    
+    masterMeter = std::make_unique<MasterMeter>(processorRef, processorRef.apvts);
+    addAndMakeVisible(masterMeter.get());
 
     setSize (900, 600);
 }
@@ -48,7 +51,7 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
     
     g.setColour (juce::Colour(0xff00ff00));
     g.setFont (CustomLookAndFeel::orbitronBold().withHeight(24.0f));
-    auto titleArea = bounds.removeFromTop(50);
+    auto titleArea = bounds.removeFromTop(70);
     g.drawText ("SampleRealm: Wobble", titleArea, juce::Justification::centred);
 }
 
@@ -56,8 +59,10 @@ void AudioPluginAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds();
     
-    // Title area
-    bounds.removeFromTop(50);
+    auto topBar = bounds.removeFromTop(70);
+    topBar.removeFromRight(10);
+    if (masterMeter != nullptr)
+        masterMeter->setBounds(topBar.removeFromRight(90).reduced(0, 6));
     
     // Padding
     bounds.reduce(10, 5);
