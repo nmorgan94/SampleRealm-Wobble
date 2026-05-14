@@ -19,7 +19,7 @@ public:
         ControlPoint(float xPos = 0.0f, float yPos = 0.5f) : x(xPos), y(yPos) {}
     };
     
-    CurveEditor() : lfo(nullptr)
+    CurveEditor() : lfo(nullptr), tension(0.5f)
     {
         // Initialize with a simple sine-like curve
         controlPoints.clear();
@@ -263,6 +263,12 @@ public:
         repaint();
     }
     
+    void setTension(float newTension)
+    {
+        tension = juce::jlimit(0.0f, 1.0f, newTension);
+        repaint();
+    }
+    
     // Listener interface for curve changes
     class Listener
     {
@@ -286,18 +292,20 @@ private:
         return controlPoints.size() - 1;
     }
     
-    // Catmull-Rom spline: smooth curve through y1 and y2, using y0 and y3 for direction
+    // Catmull-Rom spline with tension control
     float catmullRom(float y0, float y1, float y2, float y3, float t) const
     {
+        float cardinalParam = (tension - 0.5f) * 2.0f;
+        float tensionScale = (1.0f - cardinalParam) * 0.5f;
         float t2 = t * t;
         float t3 = t2 * t;
-        
-        float result = 0.5f * (
+
+        float result = tensionScale * (
             (2.0f * y1) +
             (-y0 + y2) * t +
             (2.0f * y0 - 5.0f * y1 + 4.0f * y2 - y3) * t2 +
             (-y0 + 3.0f * y1 - 3.0f * y2 + y3) * t3
-        );
+        ) + cardinalParam * (y1 + (y2 - y1) * t);
         
         return juce::jlimit(0.0f, 1.0f, result);
     }
@@ -335,6 +343,7 @@ private:
     std::optional<size_t> draggedPointIndex;
     juce::ListenerList<Listener> listeners;
     LFO* lfo;
+    float tension;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(CurveEditor)
 };

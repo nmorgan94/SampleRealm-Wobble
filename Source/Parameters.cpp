@@ -66,6 +66,11 @@ namespace Parameters
             params.push_back(std::make_unique<juce::AudioParameterChoice>(
                 juce::ParameterID{lfoPrefix + "_sync_rate", versionHint},
                 lfoName + " Sync Rate", syncRates, 6));
+            
+            params.push_back(std::make_unique<juce::AudioParameterFloat>(
+                juce::ParameterID{lfoPrefix + "_tension", versionHint},
+                lfoName + " Tension",
+                juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
         }
         
         // Filter parameters

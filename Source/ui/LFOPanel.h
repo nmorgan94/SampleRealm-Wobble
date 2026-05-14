@@ -5,6 +5,7 @@
 #include "CurveEditor.h"
 #include "CustomLFOTabButton.h"
 #include "CustomLookAndFeel.h"
+#include "ModulatableSlider.h"
 
 // Forward declaration
 class AudioPluginAudioProcessor;
@@ -65,20 +66,8 @@ public:
             syncAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
                 processor.apvts, syncParamID, *syncButtons.back()));
             
-            auto slider = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
-            container->addAndMakeVisible(slider.get());
-            rateSliders.push_back(std::move(slider));
-            
-            auto label = std::make_unique<juce::Label>();
-            label->setText("Rate", juce::dontSendNotification);
-            label->setJustificationType(juce::Justification::centred);
-            label->setColour(juce::Label::textColourId, juce::Colour(0xff00ff41));
-            container->addAndMakeVisible(label.get());
-            rateLabels.push_back(std::move(label));
-            
-            juce::String rateParamID = "lfo" + juce::String(i + 1) + "_rate";
-            rateAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
-                processor.apvts, rateParamID, *rateSliders.back()));
+            createModulatableControl(container.get(), i, "rate", "Rate", rateSliders, rateLabels, rateAttachments);
+            createTensionControl(container.get(), i);
             
             // Add listener to sync button to switch parameter
             syncButtons.back()->onClick = [this, i]()
@@ -106,6 +95,13 @@ public:
             const auto& savedPoints = processor.getLFOCurvePoints(i);
             if (!savedPoints.empty())
                 curveEditors[i]->setControlPoints(savedPoints);
+            
+            juce::String tensionParamID = "lfo" + juce::String(i + 1) + "_tension";
+            if (auto* param = processor.apvts.getParameter(tensionParamID))
+            {
+                float tensionValue = param->getValue();
+                curveEditors[i]->setTension(tensionValue);
+            }
             
             syncCurveToLFO(curveEditors[i].get(), i);
         }
@@ -174,16 +170,64 @@ public:
             int knobY = controlsArea.getY() + 5;
 
             rateLabels[i]->setBounds(knobX, labelY, knobSize, 16);
-            
             rateSliders[i]->setBounds(knobX, knobY, knobSize, knobSize);
             
             int syncButtonWidth = 35;
             int syncButtonHeight = 12;
             syncButtons[i]->setBounds(knobX + knobSize + 10, knobY + 5, syncButtonWidth, syncButtonHeight);
+            
+            int tensionX = knobX + knobSize + 55;
+            tensionLabels[i]->setBounds(tensionX, labelY, knobSize, 16);
+            tensionSliders[i]->setBounds(tensionX, knobY, knobSize, knobSize);
         }
     }
     
 private:
+    void createTensionControl(juce::Component* container, size_t lfoIndex)
+    {
+        juce::String paramID = "lfo" + juce::String(lfoIndex + 1) + "_tension";
+        
+        auto slider = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
+        container->addAndMakeVisible(slider.get());
+        tensionSliders.push_back(std::move(slider));
+        tensionLabels.push_back(createLabel("Tension", container));
+        
+        tensionSliders.back()->onValueChange = [this, lfoIndex]()
+        {
+            curveEditors[lfoIndex]->setTension(static_cast<float>(tensionSliders[lfoIndex]->getValue()));
+            syncCurveToLFO(curveEditors[lfoIndex].get(), lfoIndex);
+        };
+        
+        tensionAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            processor.apvts, paramID, *tensionSliders.back()));
+    }
+    
+    void createModulatableControl(juce::Component* container, size_t lfoIndex,
+                                   const juce::String& paramSuffix, const juce::String& labelText,
+                                   std::vector<std::unique_ptr<ModulatableSlider>>& sliders,
+                                   std::vector<std::unique_ptr<juce::Label>>& labels,
+                                   std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>>& attachments)
+    {
+        juce::String paramID = "lfo" + juce::String(lfoIndex + 1) + "_" + paramSuffix;
+        
+        auto slider = std::make_unique<ModulatableSlider>(processor, paramID);
+        container->addAndMakeVisible(slider.get());
+        sliders.push_back(std::move(slider));
+        labels.push_back(createLabel(labelText, container));
+        attachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            processor.apvts, paramID, *sliders.back()));
+    }
+    
+    std::unique_ptr<juce::Label> createLabel(const juce::String& text, juce::Component* container)
+    {
+        auto label = std::make_unique<juce::Label>();
+        label->setText(text, juce::dontSendNotification);
+        label->setJustificationType(juce::Justification::centred);
+        label->setColour(juce::Label::textColourId, juce::Colour(0xff00ff41));
+        container->addAndMakeVisible(label.get());
+        return label;
+    }
+    
     void syncCurveToLFO(CurveEditor* editor, size_t lfoIndex)
     {
         auto curveFunction = [editor](float x) { return editor->getValueAt(x); };
@@ -215,13 +259,14 @@ private:
     std::vector<std::unique_ptr<juce::Component>> tabContainers;
     std::vector<std::unique_ptr<CurveEditor>> curveEditors;
     std::vector<std::unique_ptr<juce::ComboBox>> modeComboBoxes;
-    std::vector<std::unique_ptr<juce::Label>> modeLabels;
+    std::vector<std::unique_ptr<juce::Label>> modeLabels, rateLabels, tensionLabels;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>> modeAttachments;
-    std::vector<std::unique_ptr<juce::Slider>> rateSliders;
-    std::vector<std::unique_ptr<juce::Label>> rateLabels;
+    std::vector<std::unique_ptr<ModulatableSlider>> rateSliders;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> rateAttachments;
     std::vector<std::unique_ptr<juce::ToggleButton>> syncButtons;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>> syncAttachments;
+    std::vector<std::unique_ptr<juce::Slider>> tensionSliders;
+    std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> tensionAttachments;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LFOPanel)
 };

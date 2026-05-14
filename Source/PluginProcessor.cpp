@@ -422,7 +422,7 @@ void AudioPluginAudioProcessor::updateLFOs()
     {
         juce::String lfoPrefix = "lfo" + juce::String(i + 1) + "_";
         
-        float rate = getFloatParam(lfoPrefix + "rate");
+        float rate = getModulatedParam(lfoPrefix + "rate");
         lfos[i].setRate(rate);
         
         int modeIndex = getChoiceParam(lfoPrefix + "mode");
