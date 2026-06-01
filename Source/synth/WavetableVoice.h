@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "ADSREnvelope.h"
+#include "../Parameters.h"
 
 class AudioPluginAudioProcessor;
 
@@ -32,7 +33,8 @@ private:
     const juce::AudioBuffer<float>* wavetables;
     AudioPluginAudioProcessor& owner;
     
-    double currentPhases[3] = { 0.0, 0.0, 0.0 };
+    double currentPhases[3][Parameters::maxUnison] = {};
+    juce::Random unisonRandom;
     float level = 0.0f;
     double currentFrequency = 0.0;
     int currentMidiNote = 0;
@@ -43,7 +45,7 @@ private:
 
     bool withinVoiceLimit = true;
 
-    float getInterpolatedSample(int oscIndex, double phase) const;
+    static float getInterpolatedSample(const float* data, int size, double phase);
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WavetableVoice)
 };

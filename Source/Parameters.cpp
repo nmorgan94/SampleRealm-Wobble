@@ -99,7 +99,13 @@ namespace Parameters
 
         params.push_back(std::make_unique<juce::AudioParameterInt>(
             juce::ParameterID{"num_voices", versionHint}, "Voices", 1, maxVoices, maxVoices));
-        
+
+        params.push_back(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID{"unison_voices", versionHint}, "Unison", 1, maxUnison, 1));
+
+        params.push_back(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID{"unison_detune", versionHint}, "Detune", 0, 100, 15));
+
         for (int i = 1; i <= 4; ++i)
         {
             juce::String envPrefix = "env" + juce::String(i);

@@ -25,8 +25,10 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
 
     level = velocity;
 
+    static const juce::String glideTimeID { "glide_time" };
+
     const bool   legato       = owner.getHeldNoteCount() > 0;
-    const float  glideTime    = owner.getModulatedParam("glide_time");
+    const float  glideTime    = owner.getModulatedParam(glideTimeID);
     const double glideSeconds = (legato && glideTime > 0.0f) ? glideTime : 0.0;
 
     const double startRatio = (glideSeconds > 0.0)
@@ -37,34 +39,40 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
     glideRatio.setCurrentAndTargetValue(startRatio);
     glideRatio.setTargetValue(1.0);
 
-    // Reset all oscillator phases
-    for (int i = 0; i < 3; ++i)
-        currentPhases[i] = 0.0;
+    for (int osc = 0; osc < 3; ++osc)
+    {
+        const auto size = wavetables[osc].getNumSamples();
+        currentPhases[osc][0] = 0.0;
+        for (int u = 1; u < Parameters::maxUnison; ++u)
+            currentPhases[osc][u] = unisonRandom.nextDouble() * size;
+    }
     
+    static const juce::String envParamIDs[4][4] = {
+        { "env1_attack", "env1_decay", "env1_sustain", "env1_release" },
+        { "env2_attack", "env2_decay", "env2_sustain", "env2_release" },
+        { "env3_attack", "env3_decay", "env3_sustain", "env3_release" },
+        { "env4_attack", "env4_decay", "env4_sustain", "env4_release" },
+    };
+
     // Initialize and trigger envelope
     envelope.setSampleRate(getSampleRate());
-    
-    float attack = owner.getFloatParam("env1_attack");
-    float decay = owner.getFloatParam("env1_decay");
-    float sustain = owner.getFloatParam("env1_sustain");
-    float release = owner.getFloatParam("env1_release");
-    
-    envelope.setParameters(attack, decay, sustain, release);
+
+    envelope.setParameters(owner.getFloatParam(envParamIDs[0][0]),
+                           owner.getFloatParam(envParamIDs[0][1]),
+                           owner.getFloatParam(envParamIDs[0][2]),
+                           owner.getFloatParam(envParamIDs[0][3]));
     envelope.noteOn();
-    
+
     // Trigger all modulation envelopes
     for (size_t i = 0; i < 4; ++i)
     {
         auto& env = owner.getEnvelope(i);
         env.setSampleRate(getSampleRate());
-        
-        juce::String envPrefix = "env" + juce::String(static_cast<int>(i + 1)) + "_";
-        float envAttack = owner.getFloatParam(envPrefix + "attack");
-        float envDecay = owner.getFloatParam(envPrefix + "decay");
-        float envSustain = owner.getFloatParam(envPrefix + "sustain");
-        float envRelease = owner.getFloatParam(envPrefix + "release");
-        
-        env.setParameters(envAttack, envDecay, envSustain, envRelease);
+
+        env.setParameters(owner.getFloatParam(envParamIDs[i][0]),
+                          owner.getFloatParam(envParamIDs[i][1]),
+                          owner.getFloatParam(envParamIDs[i][2]),
+                          owner.getFloatParam(envParamIDs[i][3]));
         env.noteOn();
     }
     
@@ -125,83 +133,93 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
         return;
     }
 
-    auto wavetableSize = wavetables[0].getNumSamples();
+    const int wavetableSize = wavetables[0].getNumSamples();
 
     const double currentGlideRatio = glideRatio.getCurrentValue();
     glideRatio.skip(numSamples);
-    
-    bool oscEnabled[3];
-    float oscGain[3];
-    double oscPhaseIncrement[3];
-    
+
+    static const juce::String unisonVoicesID { "unison_voices" };
+    static const juce::String unisonDetuneID { "unison_detune" };
+
+    const int   unisonCount = juce::jlimit(1, Parameters::maxUnison,
+                                           owner.getIntParam(unisonVoicesID));
+    const float detuneCents = static_cast<float>(owner.getIntParam(unisonDetuneID));
+    const float unisonGain  = 1.0f / std::sqrt(static_cast<float>(unisonCount)); // level compensation
+
+    double unisonRatio[Parameters::maxUnison];
+    for (int u = 0; u < unisonCount; ++u)
+    {
+        const double pos = (unisonCount == 1) ? 0.0
+                                              : -1.0 + 2.0 * u / (unisonCount - 1); // -1..+1
+        unisonRatio[u] = std::pow(2.0, (pos * detuneCents) / 1200.0);
+    }
+
+    bool         oscEnabled[3];
+    float        oscGain[3];
+    const float* oscData[3];
+    double       oscPhaseIncrement[3][Parameters::maxUnison];
+
+    static const juce::String enableIDs[3] = { "osc1_enable", "osc2_enable", "osc3_enable" };
+    static const juce::String gainIDs[3]   = { "osc1_gain",   "osc2_gain",   "osc3_gain"   };
+    static const juce::String pitchIDs[3]  = { "osc1_pitch",  "osc2_pitch",  "osc3_pitch"  };
+
     for (int osc = 0; osc < 3; ++osc)
     {
-        juce::String enableParamID = "osc" + juce::String(osc + 1) + "_enable";
-        juce::String gainParamID = "osc" + juce::String(osc + 1) + "_gain";
-        juce::String pitchParamID = "osc" + juce::String(osc + 1) + "_pitch";
-        
-        oscEnabled[osc] = owner.getBoolParam(enableParamID);
-        oscGain[osc] = owner.getModulatedParam(gainParamID);
-        
-        int pitchOffset = owner.getIntParam(pitchParamID);
-        double oscFrequency = juce::MidiMessage::getMidiNoteInHertz(currentMidiNote + pitchOffset) * currentGlideRatio;
-        oscPhaseIncrement[osc] = oscFrequency * wavetableSize / getSampleRate();
+        oscEnabled[osc] = owner.getBoolParam(enableIDs[osc]);
+        oscGain[osc]    = owner.getModulatedParam(gainIDs[osc]);
+        oscData[osc]    = wavetables[osc].getReadPointer(0); // cached pointer, hoisted out of the sample loop
+
+        const int    pitchOffset   = owner.getIntParam(pitchIDs[osc]);
+        const double oscFrequency  = juce::MidiMessage::getMidiNoteInHertz(currentMidiNote + pitchOffset) * currentGlideRatio;
+        const double baseIncrement = oscFrequency * wavetableSize / getSampleRate();
+
+        for (int u = 0; u < unisonCount; ++u)
+            oscPhaseIncrement[osc][u] = baseIncrement * unisonRatio[u];
     }
-    
-    for (int channel = 0; channel < outputBuffer.getNumChannels(); ++channel)
+
+    const int numChannels = outputBuffer.getNumChannels();
+    auto* const* channelPointers = outputBuffer.getArrayOfWritePointers();
+
+    for (int sample = 0; sample < numSamples; ++sample)
     {
-        auto* channelData = outputBuffer.getWritePointer(channel, startSample);
-        double localPhases[3] = { currentPhases[0], currentPhases[1], currentPhases[2] };
-        
-        for (int sample = 0; sample < numSamples; ++sample)
+        float mixedSample = 0.0f;
+
+        for (int osc = 0; osc < 3; ++osc)
         {
-            float mixedSample = 0.0f;
-            
-            for (int osc = 0; osc < 3; ++osc)
+            if (! oscEnabled[osc])
+                continue;
+
+            const float* data = oscData[osc];
+
+            for (int u = 0; u < unisonCount; ++u)
             {
-                if (oscEnabled[osc])
-                {
-                    mixedSample += getInterpolatedSample(osc, localPhases[osc]) * oscGain[osc];
-                    
-                    // Increment phase and wrap
-                    localPhases[osc] += oscPhaseIncrement[osc];
-                    while (localPhases[osc] >= wavetableSize)
-                        localPhases[osc] -= wavetableSize;
-                }
+                double& phase = currentPhases[osc][u];
+
+                mixedSample += getInterpolatedSample(data, wavetableSize, phase) * oscGain[osc];
+
+                phase += oscPhaseIncrement[osc][u];
+                while (phase >= wavetableSize)
+                    phase -= wavetableSize;
             }
-            
-            // Get envelope value for this sample
-            float envelopeValue = envelope.getNextSample();
-            
-            // Apply velocity, envelope, and add to output
-            channelData[sample] += mixedSample * level * envelopeValue;
         }
-    }
-    
-    for (int osc = 0; osc < 3; ++osc)
-    {
-        if (oscEnabled[osc])
-        {
-            currentPhases[osc] += oscPhaseIncrement[osc] * numSamples;
-            while (currentPhases[osc] >= wavetableSize)
-                currentPhases[osc] -= wavetableSize;
-        }
+
+        mixedSample *= unisonGain;
+
+        const float envelopeValue = envelope.getNextSample();
+        const float out = mixedSample * level * envelopeValue;
+
+        for (int channel = 0; channel < numChannels; ++channel)
+            channelPointers[channel][startSample + sample] += out;
     }
 }
 
-float WavetableVoice::getInterpolatedSample(int oscIndex, double phase) const
+float WavetableVoice::getInterpolatedSample(const float* data, int size, double phase)
 {
-    auto wavetableSize = wavetables[oscIndex].getNumSamples();
-    auto* wavetableData = wavetables[oscIndex].getReadPointer(0);
-    
-    auto index0 = static_cast<int>(phase);
-    auto index1 = (index0 + 1) % wavetableSize;
-    auto frac = phase - static_cast<double>(index0);
-    
-    auto sample0 = wavetableData[index0];
-    auto sample1 = wavetableData[index1];
+    const int   index0 = static_cast<int>(phase);
+    const int   index1 = (index0 + 1) % size;
+    const float frac   = static_cast<float>(phase - index0);
 
-    return static_cast<float>(sample0 + frac * (sample1 - sample0));
+    return data[index0] + frac * (data[index1] - data[index0]);
 }
 
 //==============================================================================

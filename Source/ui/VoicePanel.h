@@ -4,6 +4,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "ModulatableSlider.h"
 #include "StepperDisplay.h"
+#include "../Parameters.h"
 
 class AudioPluginAudioProcessor;
 
@@ -24,6 +25,18 @@ public:
         voicesDisplay.setShowSign(false);
         voicesDisplay.attachToParameter(apvts, "num_voices");
         addAndMakeVisible(voicesDisplay);
+
+        unisonDisplay.setLabel("UNISON");
+        unisonDisplay.setRange(1, Parameters::maxUnison);
+        unisonDisplay.setShowSign(false);
+        unisonDisplay.attachToParameter(apvts, "unison_voices");
+        addAndMakeVisible(unisonDisplay);
+
+        detuneDisplay.setLabel("DETUNE");
+        detuneDisplay.setRange(0, 100);
+        detuneDisplay.setShowSign(false);
+        detuneDisplay.attachToParameter(apvts, "unison_detune");
+        addAndMakeVisible(detuneDisplay);
 
         glideLabel.setText("Glide", juce::dontSendNotification);
         glideLabel.setJustificationType(juce::Justification::centred);
@@ -54,21 +67,32 @@ public:
 
         bounds.removeFromTop(5);
 
-        voicesDisplay.setBounds(bounds.removeFromTop(20).removeFromLeft(90));
+        auto leftColumn = bounds.removeFromLeft(100);
+        bounds.removeFromLeft(10); // gap between columns
+        auto rightColumn = bounds;
 
-        bounds.removeFromTop(5);
+        const int stepperHeight = 20;
+        const int slotHeight    = leftColumn.getHeight() / 3;
 
-        auto glideArea = bounds.reduced(5);
-        glideLabel.setBounds(glideArea.removeFromTop(15));
+        StepperDisplay* steppers[] = { &voicesDisplay, &unisonDisplay, &detuneDisplay };
+        for (auto* stepper : steppers)
+        {
+            auto slot = leftColumn.removeFromTop(slotHeight);
+            stepper->setBounds(slot.withSizeKeepingCentre(slot.getWidth(), stepperHeight));
+        }
 
-        auto sliderSize = juce::jmin(glideArea.getWidth(), glideArea.getHeight());
-        glideSlider.setBounds(glideArea.withSizeKeepingCentre(sliderSize, sliderSize));
+        glideLabel.setBounds(rightColumn.removeFromTop(15));
+
+        auto sliderSize = juce::jmin(rightColumn.getWidth(), rightColumn.getHeight());
+        glideSlider.setBounds(rightColumn.withSizeKeepingCentre(sliderSize, sliderSize));
     }
 
 private:
     juce::Label titleLabel;
     juce::Label glideLabel;
     StepperDisplay voicesDisplay;
+    StepperDisplay unisonDisplay;
+    StepperDisplay detuneDisplay;
     ModulatableSlider glideSlider;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> glideAttachment;

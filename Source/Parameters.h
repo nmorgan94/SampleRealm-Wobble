@@ -5,6 +5,7 @@
 namespace Parameters
 {
     inline constexpr int maxVoices = 8;
+    inline constexpr int maxUnison = 7;
 
     juce::AudioProcessorValueTreeState::ParameterLayout createLayout();
 }
