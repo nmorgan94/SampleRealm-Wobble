@@ -13,7 +13,9 @@ public:
                    AudioPluginAudioProcessor& processor);
     
     bool canPlaySound(juce::SynthesiserSound* sound) override;
-    
+
+    void setWithinVoiceLimit(bool isWithinLimit) { withinVoiceLimit = isWithinLimit; }
+
     void startNote(int midiNoteNumber, float velocity,
                    juce::SynthesiserSound* sound,
                    int currentPitchWheelPosition) override;
@@ -36,8 +38,10 @@ private:
     int currentMidiNote = 0;
 
     juce::SmoothedValue<double, juce::ValueSmoothingTypes::Multiplicative> glideRatio;
-    
+
     ADSREnvelope envelope;
+
+    bool withinVoiceLimit = true;
 
     float getInterpolatedSample(int oscIndex, double phase) const;
     
@@ -49,10 +53,28 @@ class WavetableSound : public juce::SynthesiserSound
 {
 public:
     WavetableSound() {}
-    
+
     bool appliesToNote(int /*midiNoteNumber*/) override { return true; }
     bool appliesToChannel(int /*midiChannel*/) override { return true; }
-    
+
 private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WavetableSound)
+};
+
+//==============================================================================
+// Tracks physically-held MIDI notes at the note-on/off level (rather than per
+// voice) so glide still works when the voice is stolen, e.g. in a 1-voice patch.
+class WavetableSynthesiser : public juce::Synthesiser
+{
+public:
+    explicit WavetableSynthesiser(AudioPluginAudioProcessor& processor);
+
+    void noteOn(int midiChannel, int midiNoteNumber, float velocity) override;
+    void noteOff(int midiChannel, int midiNoteNumber, float velocity, bool allowTailOff) override;
+    void allNotesOff(int midiChannel, bool allowTailOff) override;
+
+private:
+    AudioPluginAudioProcessor& owner;
+
+    JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(WavetableSynthesiser)
 };

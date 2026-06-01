@@ -11,7 +11,7 @@ WavetableVoice::WavetableVoice(const juce::AudioBuffer<float> wavetablesToUse[3]
 
 bool WavetableVoice::canPlaySound(juce::SynthesiserSound* sound)
 {
-    return dynamic_cast<WavetableSound*>(sound) != nullptr;
+    return withinVoiceLimit && dynamic_cast<WavetableSound*>(sound) != nullptr;
 }
 
 void WavetableVoice::startNote(int midiNoteNumber, float velocity,
@@ -37,8 +37,6 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
     glideRatio.setCurrentAndTargetValue(startRatio);
     glideRatio.setTargetValue(1.0);
 
-    owner.registerNoteStart(midiNoteNumber);
-    
     // Reset all oscillator phases
     for (int i = 0; i < 3; ++i)
         currentPhases[i] = 0.0;
@@ -80,8 +78,6 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
 void WavetableVoice::stopNote(float velocity, bool allowTailOff)
 {
     juce::ignoreUnused(velocity);
-
-    owner.registerNoteStop(currentMidiNote);
 
     if (allowTailOff)
     {
@@ -204,7 +200,31 @@ float WavetableVoice::getInterpolatedSample(int oscIndex, double phase) const
     
     auto sample0 = wavetableData[index0];
     auto sample1 = wavetableData[index1];
-    
+
     return static_cast<float>(sample0 + frac * (sample1 - sample0));
 }
 
+//==============================================================================
+WavetableSynthesiser::WavetableSynthesiser(AudioPluginAudioProcessor& processor)
+    : owner(processor)
+{
+    setNoteStealingEnabled(true);
+}
+
+void WavetableSynthesiser::noteOn(int midiChannel, int midiNoteNumber, float velocity)
+{
+    juce::Synthesiser::noteOn(midiChannel, midiNoteNumber, velocity);
+    owner.registerNoteStart(midiNoteNumber);
+}
+
+void WavetableSynthesiser::noteOff(int midiChannel, int midiNoteNumber, float velocity, bool allowTailOff)
+{
+    owner.registerNoteStop(midiNoteNumber);
+    juce::Synthesiser::noteOff(midiChannel, midiNoteNumber, velocity, allowTailOff);
+}
+
+void WavetableSynthesiser::allNotesOff(int midiChannel, bool allowTailOff)
+{
+    juce::Synthesiser::allNotesOff(midiChannel, allowTailOff);
+    owner.clearHeldNotes();
+}

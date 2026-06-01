@@ -87,6 +87,7 @@ public:
         if (noteEntry != heldNotes.end())
             heldNotes.erase(noteEntry);
     }
+    void   clearHeldNotes() { heldNotes.clear(); }
     
     Filter& getFilter() { return filter; }
     
@@ -122,7 +123,7 @@ private:
     static inline const juce::Identifier lfoCurvesStateID { "LFOCurves" };
     //==============================================================================
     juce::UndoManager undoManager;
-    juce::Synthesiser synth;
+    WavetableSynthesiser synth { *this };
     juce::AudioBuffer<float> wavetables[3];
     LFO lfos[4];
     ADSREnvelope envelopes[4];
@@ -133,6 +134,8 @@ private:
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
 
+    int currentVoiceCount = -1;
+
     std::vector<int> heldNotes;
     
     static juce::ValueTree getOrCreateStateChild(juce::ValueTree parent, const juce::Identifier& childID);
@@ -140,6 +143,7 @@ private:
     void updateWavetables();
     void updateLFOs();
     void updateFilter();
+    void updateVoiceCount();
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

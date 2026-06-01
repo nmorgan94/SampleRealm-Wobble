@@ -3,6 +3,7 @@
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "ModulatableSlider.h"
+#include "StepperDisplay.h"
 
 class AudioPluginAudioProcessor;
 
@@ -17,6 +18,12 @@ public:
         titleLabel.setJustificationType(juce::Justification::centredLeft);
         titleLabel.setFont(juce::FontOptions(16.0f, juce::Font::bold));
         addAndMakeVisible(titleLabel);
+
+        voicesDisplay.setLabel("VOICES");
+        voicesDisplay.setRange(1, 8);
+        voicesDisplay.setShowSign(false);
+        voicesDisplay.attachToParameter(apvts, "num_voices");
+        addAndMakeVisible(voicesDisplay);
 
         glideLabel.setText("Glide", juce::dontSendNotification);
         glideLabel.setJustificationType(juce::Justification::centred);
@@ -47,6 +54,10 @@ public:
 
         bounds.removeFromTop(5);
 
+        voicesDisplay.setBounds(bounds.removeFromTop(20).removeFromLeft(90));
+
+        bounds.removeFromTop(5);
+
         auto glideArea = bounds.reduced(5);
         glideLabel.setBounds(glideArea.removeFromTop(15));
 
@@ -57,6 +68,7 @@ public:
 private:
     juce::Label titleLabel;
     juce::Label glideLabel;
+    StepperDisplay voicesDisplay;
     ModulatableSlider glideSlider;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> glideAttachment;

@@ -203,8 +203,11 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
 
     synth.addSound(new WavetableSound());
 
-    for (int i = 0; i < 8; ++i)
+    for (int i = 0; i < Parameters::maxVoices; ++i)
         synth.addVoice(new WavetableVoice(wavetables, *this));
+
+    currentVoiceCount = -1;
+    updateVoiceCount();
 
     heldNotes.clear();
     heldNotes.reserve(128);
@@ -283,8 +286,10 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     
     // Update LFO rates and modes
     updateLFOs();
-    
+
     updateFilter();
+
+    updateVoiceCount();
     
     bool hasActiveVoices = false;
     for (int i = 0; i < synth.getNumVoices(); ++i)
@@ -450,4 +455,28 @@ void AudioPluginAudioProcessor::updateFilter()
     
     float resonance = getModulatedParam("filter_resonance");
     filter.setResonance(resonance);
+}
+
+void AudioPluginAudioProcessor::updateVoiceCount()
+{
+    const int desiredVoices = getIntParam("num_voices");
+
+    if (desiredVoices == currentVoiceCount)
+        return;
+
+    currentVoiceCount = desiredVoices;
+
+    for (int i = 0; i < synth.getNumVoices(); ++i)
+    {
+        const bool isWithinLimit = i < desiredVoices;
+
+        if (auto* voice = dynamic_cast<WavetableVoice*>(synth.getVoice(i)))
+        {
+            // Release any voice being switched off so it stops sounding.
+            if (! isWithinLimit && voice->isVoiceActive())
+                voice->stopNote(0.0f, true);
+
+            voice->setWithinVoiceLimit(isWithinLimit);
+        }
+    }
 }
