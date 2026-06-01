@@ -200,11 +200,14 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     
     synth.clearVoices();
     synth.clearSounds();
-    
+
     synth.addSound(new WavetableSound());
-    
+
     for (int i = 0; i < 8; ++i)
         synth.addVoice(new WavetableVoice(wavetables, *this));
+
+    heldNotes.clear();
+    heldNotes.reserve(128);
 }
 
 void AudioPluginAudioProcessor::releaseResources()

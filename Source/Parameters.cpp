@@ -92,6 +92,10 @@ namespace Parameters
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"master_gain", versionHint}, "Master Gain",
             juce::NormalisableRange<float>(-24.0f, 6.0f, 0.1f), 0.0f));
+
+        params.push_back(std::make_unique<juce::AudioParameterFloat>(
+            juce::ParameterID{"glide_time", versionHint}, "Glide Time",
+            juce::NormalisableRange<float>(0.0f, 2.0f, 0.001f, 0.4f), 0.0f));
         
         for (int i = 1; i <= 4; ++i)
         {

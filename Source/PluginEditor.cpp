@@ -24,6 +24,9 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     
     filterPanel = std::make_unique<FilterPanel>(processorRef, processorRef.apvts);
     addAndMakeVisible(filterPanel.get());
+
+    voicePanel = std::make_unique<VoicePanel>(processorRef, processorRef.apvts);
+    addAndMakeVisible(voicePanel.get());
     
     envelopePanel = std::make_unique<EnvelopePanel>(processorRef);
     addAndMakeVisible(envelopePanel.get());
@@ -89,6 +92,8 @@ void AudioPluginAudioProcessorEditor::resized()
     
     int filterHeight = middleSection.getHeight() / 2;
     filterPanel->setBounds(middleSection.removeFromTop(filterHeight));
+    middleSection.removeFromTop(10);
+    voicePanel->setBounds(middleSection);
     
     int panelHeight = (rightSection.getHeight() - 10) / 2;
     

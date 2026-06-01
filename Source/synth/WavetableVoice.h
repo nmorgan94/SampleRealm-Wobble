@@ -31,10 +31,11 @@ private:
     AudioPluginAudioProcessor& owner;
     
     double currentPhases[3] = { 0.0, 0.0, 0.0 };
-    double phaseIncrement = 0.0;
     float level = 0.0f;
     double currentFrequency = 0.0;
     int currentMidiNote = 0;
+
+    juce::SmoothedValue<double, juce::ValueSmoothingTypes::Multiplicative> glideRatio;
     
     ADSREnvelope envelope;
 

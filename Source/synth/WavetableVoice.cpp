@@ -22,11 +22,22 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
     
     currentMidiNote = midiNoteNumber;
     currentFrequency = juce::MidiMessage::getMidiNoteInHertz(midiNoteNumber);
-    
+
     level = velocity;
-    
-    auto wavetableSize = wavetables[0].getNumSamples();
-    phaseIncrement = currentFrequency * wavetableSize / getSampleRate();
+
+    const bool   legato       = owner.getHeldNoteCount() > 0;
+    const float  glideTime    = owner.getModulatedParam("glide_time");
+    const double glideSeconds = (legato && glideTime > 0.0f) ? glideTime : 0.0;
+
+    const double startRatio = (glideSeconds > 0.0)
+        ? juce::MidiMessage::getMidiNoteInHertz(juce::roundToInt(owner.getLastNotePitch())) / currentFrequency
+        : 1.0;
+
+    glideRatio.reset(getSampleRate(), glideSeconds);
+    glideRatio.setCurrentAndTargetValue(startRatio);
+    glideRatio.setTargetValue(1.0);
+
+    owner.registerNoteStart(midiNoteNumber);
     
     // Reset all oscillator phases
     for (int i = 0; i < 3; ++i)
@@ -69,7 +80,9 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
 void WavetableVoice::stopNote(float velocity, bool allowTailOff)
 {
     juce::ignoreUnused(velocity);
-    
+
+    owner.registerNoteStop(currentMidiNote);
+
     if (allowTailOff)
     {
         // Trigger envelope release
@@ -115,8 +128,11 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
         clearCurrentNote();
         return;
     }
-    
+
     auto wavetableSize = wavetables[0].getNumSamples();
+
+    const double currentGlideRatio = glideRatio.getCurrentValue();
+    glideRatio.skip(numSamples);
     
     bool oscEnabled[3];
     float oscGain[3];
@@ -132,7 +148,7 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
         oscGain[osc] = owner.getModulatedParam(gainParamID);
         
         int pitchOffset = owner.getIntParam(pitchParamID);
-        double oscFrequency = juce::MidiMessage::getMidiNoteInHertz(currentMidiNote + pitchOffset);
+        double oscFrequency = juce::MidiMessage::getMidiNoteInHertz(currentMidiNote + pitchOffset) * currentGlideRatio;
         oscPhaseIncrement[osc] = oscFrequency * wavetableSize / getSampleRate();
     }
     

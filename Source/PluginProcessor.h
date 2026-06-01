@@ -1,5 +1,8 @@
 #pragma once
 
+#include <algorithm>
+#include <vector>
+
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "synth/WavetableVoice.h"
 #include "synth/WavetableGenerator.h"
@@ -74,6 +77,16 @@ public:
     }
     
     ModulationManager& getModulationManager() { return modulationManager; }
+
+    int    getHeldNoteCount() const { return static_cast<int>(heldNotes.size()); }
+    double getLastNotePitch() const { return heldNotes.empty() ? 60.0 : static_cast<double>(heldNotes.back()); }
+    void   registerNoteStart(int midiNote) { heldNotes.push_back(midiNote); }
+    void   registerNoteStop(int midiNote)
+    {
+        auto noteEntry = std::find(heldNotes.begin(), heldNotes.end(), midiNote);
+        if (noteEntry != heldNotes.end())
+            heldNotes.erase(noteEntry);
+    }
     
     Filter& getFilter() { return filter; }
     
@@ -119,6 +132,8 @@ private:
     OutputMeterState outputMeterState;
     
     WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
+
+    std::vector<int> heldNotes;
     
     static juce::ValueTree getOrCreateStateChild(juce::ValueTree parent, const juce::Identifier& childID);
     
