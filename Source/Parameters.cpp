@@ -25,7 +25,16 @@ namespace Parameters
             params.push_back(std::make_unique<juce::AudioParameterChoice>(
                 juce::ParameterID{oscPrefix + "_waveform", versionHint},
                 oscName + " Waveform", waveformNames, waveformDefaults[i - 1]));
-            
+
+            params.push_back(std::make_unique<juce::AudioParameterChoice>(
+                juce::ParameterID{oscPrefix + "_waveform_b", versionHint},
+                oscName + " Waveform B", waveformNames, waveformDefaults[i - 1]));
+
+            params.push_back(std::make_unique<juce::AudioParameterFloat>(
+                juce::ParameterID{oscPrefix + "_morph", versionHint},
+                oscName + " Morph",
+                juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.0f));
+
             params.push_back(std::make_unique<juce::AudioParameterFloat>(
                 juce::ParameterID{oscPrefix + "_gain", versionHint},
                 oscName + " Gain",

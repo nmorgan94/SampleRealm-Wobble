@@ -56,7 +56,6 @@ public:
     void setStateInformation (const void* data, int sizeInBytes) override;
     
     //==============================================================================
-    const juce::AudioBuffer<float>& getWavetable(int oscIndex) const;
     bool getBoolParam(const juce::String& paramID) const;
     float getFloatParam(const juce::String& paramID) const;
     int getChoiceParam(const juce::String& paramID) const;
@@ -124,7 +123,9 @@ private:
     //==============================================================================
     juce::UndoManager undoManager;
     WavetableSynthesiser synth { *this };
-    juce::AudioBuffer<float> wavetables[3];
+    juce::AudioBuffer<float> wavetables[3];   // blended A/B output read by the audio voices
+    juce::AudioBuffer<float> sourceA[3];      // pure waveform A (osc{i}_waveform)
+    juce::AudioBuffer<float> sourceB[3];      // pure waveform B (osc{i}_waveform_b)
     LFO lfos[4];
     ADSREnvelope envelopes[4];
     ModulationManager modulationManager;
@@ -132,7 +133,9 @@ private:
     Filter filter;
     OutputMeterState outputMeterState;
     
-    WaveformType currentWaveformTypes[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
+    WaveformType currentWaveformTypes[3]  = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
+    WaveformType currentWaveformTypesB[3] = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
+    float lastMorph[3] = { -1.0f, -1.0f, -1.0f }; // -1 forces the first blend
 
     int currentVoiceCount = -1;
 
@@ -140,7 +143,8 @@ private:
     
     static juce::ValueTree getOrCreateStateChild(juce::ValueTree parent, const juce::Identifier& childID);
     
-    void updateWavetables();
+    void updateOscillatorTables(bool forceRegen);
+    void blendWavetable(int oscIndex, float morph);
     void updateLFOs();
     void updateFilter();
     void updateVoiceCount();

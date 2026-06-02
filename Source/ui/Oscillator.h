@@ -18,16 +18,23 @@ public:
                juce::AudioProcessorValueTreeState& apvts,
                const juce::String& enableParamID,
                const juce::String& waveformParamID,
+               const juce::String& waveformBParamID,
+               const juce::String& morphParamID,
                const juce::String& gainParamID,
                const juce::String& pitchParamID,
-               const juce::String& labelText,
-               const juce::AudioBuffer<float>& wavetableRef)
-        : wavetable(wavetableRef),
+               const juce::String& labelText)
+        : processorRef(proc),
           apvtsRef(apvts),
+          waveformAID(waveformParamID),
+          waveformBID(waveformBParamID),
+          morphID(morphParamID),
           pitchParamIDStr(pitchParamID),
-          gainSlider(proc, gainParamID)
+          gainSlider(proc, gainParamID),
+          morphSlider(proc, morphParamID)
     {
-        
+        displaySourceA.setSize(1, WavetableGenerator::getWavetableSize());
+        displaySourceB.setSize(1, WavetableGenerator::getWavetableSize());
+
         titleLabel.setText(labelText, juce::dontSendNotification);
         titleLabel.setJustificationType(juce::Justification::centred);
         addAndMakeVisible(titleLabel);
@@ -37,11 +44,16 @@ public:
         
         auto waveformNames = WavetableGenerator::getWaveformNames();
         for (int i = 0; i < waveformNames.size(); ++i)
+        {
             waveformSelector.addItem(waveformNames[i], i + 1);
+            waveformSelectorB.addItem(waveformNames[i], i + 1);
+        }
         addAndMakeVisible(waveformSelector);
-        
+        addAndMakeVisible(waveformSelectorB);
+
         addAndMakeVisible(gainSlider);
-        
+        addAndMakeVisible(morphSlider);
+
         addAndMakeVisible(semitoneDisplay);
         semitoneDisplay.attachToParameter(proc, apvts, pitchParamID);
 
@@ -49,9 +61,13 @@ public:
             apvts, enableParamID, enableButton);
         waveformAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
             apvts, waveformParamID, waveformSelector);
+        waveformBAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+            apvts, waveformBParamID, waveformSelectorB);
         gainAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
             apvts, gainParamID, gainSlider);
-        
+        morphAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            apvts, morphParamID, morphSlider);
+
     }
     
     ~Oscillator() override
@@ -78,8 +94,12 @@ public:
         titleLabel.setAlpha(alpha);
         waveformSelector.setAlpha(alpha);
         waveformSelector.setEnabled(isEnabled);
+        waveformSelectorB.setAlpha(alpha);
+        waveformSelectorB.setEnabled(isEnabled);
         gainSlider.setAlpha(alpha);
         gainSlider.setEnabled(isEnabled);
+        morphSlider.setAlpha(alpha);
+        morphSlider.setEnabled(isEnabled);
         semitoneDisplay.setAlpha(alpha);
         semitoneDisplay.setEnabled(isEnabled);
         
@@ -92,7 +112,7 @@ public:
         g.drawRoundedRectangle(bounds.toFloat(), 8.0f, 2.0f);
         
         auto waveformArea = bounds.reduced(10);
-        waveformArea.removeFromTop(60);
+        waveformArea.removeFromTop(70);
         
         // Draw waveform background
         g.setColour(juce::Colours::black.withAlpha(alpha));
@@ -123,12 +143,18 @@ public:
         controlBar.removeFromLeft(5);
         
         gainSlider.setBounds(controlBar.removeFromLeft(knobSize).withHeight(knobSize));
-        
+
         bounds.removeFromTop(5);
-        auto pitchRow = bounds.removeFromTop(20);
-        
+        auto morphRow = bounds.removeFromTop(30);
+
+        auto gutter = morphRow.removeFromLeft(30 + 3 + labelWidth + 3);
         auto pitchWidth = 60;
-        semitoneDisplay.setBounds(pitchRow.removeFromLeft(pitchWidth));
+        semitoneDisplay.setBounds(gutter.removeFromLeft(pitchWidth).withSizeKeepingCentre(pitchWidth, 20));
+
+        auto morphSelectorWidth = morphRow.getWidth() - knobSize - 5;
+        waveformSelectorB.setBounds(morphRow.removeFromLeft(morphSelectorWidth));
+        morphRow.removeFromLeft(5);
+        morphSlider.setBounds(morphRow.removeFromLeft(knobSize).withHeight(knobSize));
     }
     
     void timerCallback() override
@@ -144,25 +170,49 @@ public:
     ModulatableSlider& getGainSlider() { return gainSlider; }
 
 private:
+    // Regenerate the cached display waveforms only when a waveform selection changes.
+    // Runs on the message thread so the display never reads the audio thread's buffers.
+    void updateDisplaySources()
+    {
+        const int aIndex = static_cast<int>(apvtsRef.getRawParameterValue(waveformAID)->load());
+        if (aIndex != displayTypeA)
+        {
+            WavetableGenerator::generateWavetable(displaySourceA, static_cast<WaveformType>(aIndex));
+            displayTypeA = aIndex;
+        }
+
+        const int bIndex = static_cast<int>(apvtsRef.getRawParameterValue(waveformBID)->load());
+        if (bIndex != displayTypeB)
+        {
+            WavetableGenerator::generateWavetable(displaySourceB, static_cast<WaveformType>(bIndex));
+            displayTypeB = bIndex;
+        }
+    }
+
     void drawWaveform(juce::Graphics& g, juce::Rectangle<int> bounds, float alpha)
     {
-        if (wavetable.getNumSamples() == 0)
+        updateDisplaySources();
+
+        const int numSamples = displaySourceA.getNumSamples();
+        if (numSamples == 0)
             return;
-        
-        const auto* samples = wavetable.getReadPointer(0);
-        const int numSamples = wavetable.getNumSamples();
-        
+
+        const float* samplesA = displaySourceA.getReadPointer(0);
+        const float* samplesB = displaySourceB.getReadPointer(0);
+        const float morph = juce::jlimit(0.0f, 1.0f, processorRef.getModulatedParam(morphID));
+
         juce::Path waveformPath;
-        
+
         const float width = static_cast<float>(bounds.getWidth());
         const float height = static_cast<float>(bounds.getHeight());
         const float centerY = bounds.getY() + height / 2.0f;
-        
+
         for (int i = 0; i < numSamples; ++i)
         {
+            const float sample = samplesA[i] + morph * (samplesB[i] - samplesA[i]);
             float x = bounds.getX() + (i / static_cast<float>(numSamples)) * width;
-            float y = centerY - (samples[i] * height * 0.4f);
-            
+            float y = centerY - (sample * height * 0.4f);
+
             if (i == 0)
                 waveformPath.startNewSubPath(x, y);
             else
@@ -185,19 +235,31 @@ private:
         }
     }
     
-    const juce::AudioBuffer<float>& wavetable;
+    AudioPluginAudioProcessor& processorRef;
     juce::AudioProcessorValueTreeState& apvtsRef;
+    juce::String waveformAID;
+    juce::String waveformBID;
+    juce::String morphID;
     juce::String pitchParamIDStr;
     
     juce::Label titleLabel;
     juce::ToggleButton enableButton;
     juce::ComboBox waveformSelector;
+    juce::ComboBox waveformSelectorB;
     ModulatableSlider gainSlider;
+    ModulatableSlider morphSlider;
     StepperDisplay semitoneDisplay;
-    
+
+    juce::AudioBuffer<float> displaySourceA;
+    juce::AudioBuffer<float> displaySourceB;
+    int displayTypeA = -1;
+    int displayTypeB = -1;
+
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> waveformAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> waveformBAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> morphAttachment;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(Oscillator)
 };

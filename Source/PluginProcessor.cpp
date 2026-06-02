@@ -1,6 +1,14 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
 
+namespace
+{
+    constexpr int kNumOscillators = 3;
+    const juce::String kWaveformAIDs[kNumOscillators] = { "osc1_waveform",   "osc2_waveform",   "osc3_waveform"   };
+    const juce::String kWaveformBIDs[kNumOscillators] = { "osc1_waveform_b", "osc2_waveform_b", "osc3_waveform_b" };
+    const juce::String kMorphIDs[kNumOscillators]     = { "osc1_morph",      "osc2_morph",      "osc3_morph"      };
+}
+
 //==============================================================================
 AudioPluginAudioProcessor::AudioPluginAudioProcessor()
      : AudioProcessor (BusesProperties()
@@ -25,11 +33,6 @@ AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
 }
 
 //==============================================================================
-const juce::AudioBuffer<float>& AudioPluginAudioProcessor::getWavetable(int oscIndex) const
-{
-    return wavetables[oscIndex];
-}
-
 bool AudioPluginAudioProcessor::getBoolParam(const juce::String& paramID) const
 {
     if (auto* param = dynamic_cast<juce::AudioParameterBool*>(apvts.getParameter(paramID)))
@@ -156,19 +159,7 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     synth.setCurrentPlaybackSampleRate(sampleRate);
     
     outputMeterState.reset();
-    
-    // Generate the initial wavetables for all oscillators
-    const juce::String waveformParamIDs[3] = { "osc1_waveform", "osc2_waveform", "osc3_waveform" };
-    
-    for (int i = 0; i < 3; ++i)
-    {
-        currentWaveformTypes[i] = static_cast<WaveformType>(
-            static_cast<int>(apvts.getRawParameterValue(waveformParamIDs[i])->load()));
-        
-        wavetables[i].setSize(1, WavetableGenerator::getWavetableSize());
-        WavetableGenerator::generateWavetable(wavetables[i], currentWaveformTypes[i]);
-    }
-    
+
     // Initialize LFOs
     for (int i = 0; i < 4; ++i)
     {
@@ -189,7 +180,16 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         
         envelopes[i].setParameters(attack, decay, sustain, release);
     }
-    
+
+    const int wavetableSize = WavetableGenerator::getWavetableSize();
+    for (int i = 0; i < kNumOscillators; ++i)
+    {
+        sourceA[i].setSize(1, wavetableSize);
+        sourceB[i].setSize(1, wavetableSize);
+        wavetables[i].setSize(1, wavetableSize);
+    }
+    updateOscillatorTables(true);
+
     juce::dsp::ProcessSpec spec;
     spec.sampleRate = sampleRate;
     spec.maximumBlockSize = static_cast<juce::uint32>(samplesPerBlock);
@@ -268,28 +268,12 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
-    // Check if any oscillator settings have changed
-    const juce::String waveformParamIDs[3] = { "osc1_waveform", "osc2_waveform", "osc3_waveform" };
-    
-    for (int i = 0; i < 3; ++i)
-    {
-        auto newWaveformType = static_cast<WaveformType>(
-            static_cast<int>(apvts.getRawParameterValue(waveformParamIDs[i])->load()));
-        
-        if (newWaveformType != currentWaveformTypes[i])
-        {
-            currentWaveformTypes[i] = newWaveformType;
-            WavetableGenerator::generateWavetable(wavetables[i], newWaveformType);
-        }
-    }
-    
+
     // Update LFO rates and modes
     updateLFOs();
 
-    updateFilter();
-
     updateVoiceCount();
-    
+
     bool hasActiveVoices = false;
     for (int i = 0; i < synth.getNumVoices(); ++i)
     {
@@ -337,8 +321,12 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
         }
     }
 
+    updateFilter();
+
+    updateOscillatorTables(false);
+
     buffer.clear();
-    
+
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
     
     if (getBoolParam("filter_enable"))
@@ -416,10 +404,50 @@ juce::ValueTree AudioPluginAudioProcessor::getOrCreateStateChild(juce::ValueTree
     return child;
 }
 
-void AudioPluginAudioProcessor::updateWavetables()
+void AudioPluginAudioProcessor::updateOscillatorTables(bool forceRegen)
 {
-    for (int i = 0; i < 3; ++i)
-        WavetableGenerator::generateWavetable(wavetables[i], currentWaveformTypes[i]);
+    // Regenerate a source only when its waveform choice changes (or on forceRegen, used
+    // once at prepare), and reblend only when a source or the modulated morph changed.
+    for (int i = 0; i < kNumOscillators; ++i)
+    {
+        bool sourcesChanged = false;
+
+        const auto newA = static_cast<WaveformType>(
+            static_cast<int>(apvts.getRawParameterValue(kWaveformAIDs[i])->load()));
+        if (forceRegen || newA != currentWaveformTypes[i])
+        {
+            currentWaveformTypes[i] = newA;
+            WavetableGenerator::generateWavetable(sourceA[i], newA);
+            sourcesChanged = true;
+        }
+
+        const auto newB = static_cast<WaveformType>(
+            static_cast<int>(apvts.getRawParameterValue(kWaveformBIDs[i])->load()));
+        if (forceRegen || newB != currentWaveformTypesB[i])
+        {
+            currentWaveformTypesB[i] = newB;
+            WavetableGenerator::generateWavetable(sourceB[i], newB);
+            sourcesChanged = true;
+        }
+
+        const float morph = getModulatedParam(kMorphIDs[i]);
+        if (sourcesChanged || morph != lastMorph[i])
+            blendWavetable(i, morph);
+    }
+}
+
+void AudioPluginAudioProcessor::blendWavetable(int oscIndex, float morph)
+{
+    const int    n   = wavetables[oscIndex].getNumSamples();
+    const float* a   = sourceA[oscIndex].getReadPointer(0);
+    const float* b   = sourceB[oscIndex].getReadPointer(0);
+    float*       out = wavetables[oscIndex].getWritePointer(0);
+
+    const float m = juce::jlimit(0.0f, 1.0f, morph);
+    for (int s = 0; s < n; ++s)
+        out[s] = a[s] + m * (b[s] - a[s]);
+
+    lastMorph[oscIndex] = morph;
 }
 
 void AudioPluginAudioProcessor::updateLFOs()
