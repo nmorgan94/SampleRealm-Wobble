@@ -106,6 +106,9 @@ namespace Parameters
         params.push_back(std::make_unique<juce::AudioParameterInt>(
             juce::ParameterID{"unison_detune", versionHint}, "Detune", 0, 100, 15));
 
+        params.push_back(std::make_unique<juce::AudioParameterInt>(
+            juce::ParameterID{"unison_spread", versionHint}, "Spread", 0, 100, 50));
+
         for (int i = 1; i <= 4; ++i)
         {
             juce::String envPrefix = "env" + juce::String(i);

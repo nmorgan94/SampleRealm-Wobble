@@ -140,18 +140,26 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
 
     static const juce::String unisonVoicesID { "unison_voices" };
     static const juce::String unisonDetuneID { "unison_detune" };
+    static const juce::String unisonSpreadID { "unison_spread" };
 
-    const int   unisonCount = juce::jlimit(1, Parameters::maxUnison,
-                                           owner.getIntParam(unisonVoicesID));
-    const float detuneCents = static_cast<float>(owner.getIntParam(unisonDetuneID));
-    const float unisonGain  = 1.0f / std::sqrt(static_cast<float>(unisonCount)); // level compensation
+    const int   unisonCount  = juce::jlimit(1, Parameters::maxUnison,
+                                            owner.getIntParam(unisonVoicesID));
+    const float detuneCents  = static_cast<float>(owner.getIntParam(unisonDetuneID));
+    const float spreadAmount = static_cast<float>(owner.getIntParam(unisonSpreadID)) / 100.0f; // 0..1
+    const float unisonGain   = 1.0f / std::sqrt(static_cast<float>(unisonCount)); // level compensation
 
     double unisonRatio[Parameters::maxUnison];
+    float  unisonPanL[Parameters::maxUnison];
+    float  unisonPanR[Parameters::maxUnison];
     for (int u = 0; u < unisonCount; ++u)
     {
         const double pos = (unisonCount == 1) ? 0.0
                                               : -1.0 + 2.0 * u / (unisonCount - 1); // -1..+1
         unisonRatio[u] = std::pow(2.0, (pos * detuneCents) / 1200.0);
+
+        const float panPos = static_cast<float>(pos) * spreadAmount; // -1..+1
+        unisonPanL[u] = (panPos <= 0.0f) ? 1.0f : 1.0f - panPos;
+        unisonPanR[u] = (panPos >= 0.0f) ? 1.0f : 1.0f + panPos;
     }
 
     bool         oscEnabled[3];
@@ -182,7 +190,7 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
 
     for (int sample = 0; sample < numSamples; ++sample)
     {
-        float mixedSample = 0.0f;
+        float left = 0.0f, right = 0.0f;
 
         for (int osc = 0; osc < 3; ++osc)
         {
@@ -195,7 +203,9 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
             {
                 double& phase = currentPhases[osc][u];
 
-                mixedSample += getInterpolatedSample(data, wavetableSize, phase) * oscGain[osc];
+                const float s = getInterpolatedSample(data, wavetableSize, phase) * oscGain[osc];
+                left  += s * unisonPanL[u];
+                right += s * unisonPanR[u];
 
                 phase += oscPhaseIncrement[osc][u];
                 while (phase >= wavetableSize)
@@ -203,13 +213,26 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
             }
         }
 
-        mixedSample *= unisonGain;
-
         const float envelopeValue = envelope.getNextSample();
-        const float out = mixedSample * level * envelopeValue;
+        const float g = unisonGain * level * envelopeValue;
+        left  *= g;
+        right *= g;
 
-        for (int channel = 0; channel < numChannels; ++channel)
-            channelPointers[channel][startSample + sample] += out;
+        const int sampleIndex = startSample + sample;
+
+        if (numChannels >= 2)
+        {
+            channelPointers[0][sampleIndex] += left;
+            channelPointers[1][sampleIndex] += right;
+
+            // Any channels beyond stereo get the mono downmix.
+            for (int channel = 2; channel < numChannels; ++channel)
+                channelPointers[channel][sampleIndex] += (left + right) * 0.5f;
+        }
+        else if (numChannels == 1)
+        {
+            channelPointers[0][sampleIndex] += (left + right) * 0.5f;
+        }
     }
 }
 

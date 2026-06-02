@@ -21,7 +21,7 @@ public:
         addAndMakeVisible(titleLabel);
 
         voicesDisplay.setLabel("VOICES");
-        voicesDisplay.setRange(1, 8);
+        voicesDisplay.setRange(1, Parameters::maxVoices);
         voicesDisplay.setShowSign(false);
         voicesDisplay.attachToParameter(apvts, "num_voices");
         addAndMakeVisible(voicesDisplay);
@@ -37,6 +37,12 @@ public:
         detuneDisplay.setShowSign(false);
         detuneDisplay.attachToParameter(apvts, "unison_detune");
         addAndMakeVisible(detuneDisplay);
+
+        spreadDisplay.setLabel("SPREAD");
+        spreadDisplay.setRange(0, 100);
+        spreadDisplay.setShowSign(false);
+        spreadDisplay.attachToParameter(apvts, "unison_spread");
+        addAndMakeVisible(spreadDisplay);
 
         glideLabel.setText("Glide", juce::dontSendNotification);
         glideLabel.setJustificationType(juce::Justification::centred);
@@ -71,10 +77,11 @@ public:
         bounds.removeFromLeft(10); // gap between columns
         auto rightColumn = bounds;
 
-        const int stepperHeight = 20;
-        const int slotHeight    = leftColumn.getHeight() / 3;
+        StepperDisplay* steppers[] = { &voicesDisplay, &unisonDisplay, &detuneDisplay, &spreadDisplay };
 
-        StepperDisplay* steppers[] = { &voicesDisplay, &unisonDisplay, &detuneDisplay };
+        const int stepperHeight = 20;
+        const int slotHeight    = leftColumn.getHeight() / 4; // one slot per stepper
+
         for (auto* stepper : steppers)
         {
             auto slot = leftColumn.removeFromTop(slotHeight);
@@ -93,6 +100,7 @@ private:
     StepperDisplay voicesDisplay;
     StepperDisplay unisonDisplay;
     StepperDisplay detuneDisplay;
+    StepperDisplay spreadDisplay;
     ModulatableSlider glideSlider;
 
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> glideAttachment;
