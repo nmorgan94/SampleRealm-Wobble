@@ -101,21 +101,14 @@ public:
             int dragDistance = event.getPosition().y - modDragStart.y;
             float delta = -dragDistance * 0.003f;
             
-            auto assignment = processor.getModulationManager().getAssignment(parameterID);
-            
             if (auto* param = getParameter())
             {
-                auto range = param->getNormalisableRange();
-                float normalizedBase = range.convertTo0to1(static_cast<float>(getValue()));
-                
-                calculateModulationRange(assignment, normalizedBase, delta);
-                
-                auto& manager = processor.getModulationManager();
-                if (assignment.isLFO())
-                    manager.assignLFO(parameterID, assignment.sourceIndex, assignment.minValue, assignment.maxValue);
-                else
-                    manager.assignEnvelope(parameterID, assignment.sourceIndex, assignment.minValue, assignment.maxValue);
-                
+                float normalizedBase = param->getNormalisableRange().convertTo0to1(static_cast<float>(getValue()));
+
+                auto assignment = processor.getModulationManager().getAssignment(parameterID);
+                ModulationManager::applyDepthChange(assignment, normalizedBase, delta);
+                processor.getModulationManager().setAssignment(parameterID, assignment);
+
                 repaint();
             }
         }
@@ -160,78 +153,32 @@ private:
         return dynamic_cast<juce::AudioParameterFloat*>(processor.getAPVTS().getParameter(parameterID));
     }
     
-    void calculateModulationRange(ModulationManager::ModulationAssignment& assignment, float normalizedBase, float delta)
-    {
-        if (assignment.isEnvelope())
-        {
-            assignment.minValue = normalizedBase;
-            assignment.maxValue = juce::jmin(1.0f, normalizedBase + juce::jlimit(0.05f, 1.0f - normalizedBase,
-                                            (assignment.maxValue - assignment.minValue) + delta));
-        }
-        else
-        {
-            float currentDepth = (assignment.maxValue - assignment.minValue) * 0.5f;
-            float desiredDepth = juce::jlimit(0.05f, 1.0f, currentDepth + delta);
-            float roomBelow = normalizedBase, roomAbove = 1.0f - normalizedBase;
-            
-            if (desiredDepth <= juce::jmin(roomBelow, roomAbove))
-            {
-                assignment.minValue = normalizedBase - desiredDepth;
-                assignment.maxValue = normalizedBase + desiredDepth;
-            }
-            else
-            {
-                float actualDepth = juce::jmin(desiredDepth, juce::jmax(roomBelow, roomAbove));
-                assignment.minValue = juce::jmax(0.0f, normalizedBase - actualDepth);
-                assignment.maxValue = juce::jmin(1.0f, normalizedBase + actualDepth);
-            }
-        }
-    }
-    
     void updateModulationRangeFromSlider()
     {
         if (assignedSourceIndex < 0)
             return;
-            
-        auto assignment = processor.getModulationManager().getAssignment(parameterID);
+
         if (auto* param = getParameter())
         {
-            auto range = param->getNormalisableRange();
-            float normalizedBase = range.convertTo0to1(static_cast<float>(getValue()));
-            
-            calculateModulationRange(assignment, normalizedBase, 0.0f);
-            
-            auto& manager = processor.getModulationManager();
-            if (assignment.isLFO())
-                manager.assignLFO(parameterID, assignment.sourceIndex, assignment.minValue, assignment.maxValue);
-            else
-                manager.assignEnvelope(parameterID, assignment.sourceIndex, assignment.minValue, assignment.maxValue);
+            float normalizedBase = param->getNormalisableRange().convertTo0to1(static_cast<float>(getValue()));
+
+            auto assignment = processor.getModulationManager().getAssignment(parameterID);
+            ModulationManager::applyDepthChange(assignment, normalizedBase, 0.0f);
+            processor.getModulationManager().setAssignment(parameterID, assignment);
         }
     }
-    
+
     void assignModulator(bool isLFO, int index)
     {
         if (auto* param = getParameter())
         {
-            auto& manager = processor.getModulationManager();
             float normalizedBase = param->getNormalisableRange().convertTo0to1(static_cast<float>(getValue()));
-            float depth = 0.25f;
-            
-            float minVal, maxVal;
-            if (isLFO)
-            {
-                minVal = juce::jlimit(0.0f, 1.0f, normalizedBase - depth);
-                maxVal = juce::jmin(1.0f, normalizedBase + depth);
-                manager.assignLFO(parameterID, index, minVal, maxVal);
-            }
-            else
-            {
-                minVal = normalizedBase;
-                maxVal = juce::jmin(1.0f, normalizedBase + depth);
-                manager.assignEnvelope(parameterID, index, minVal, maxVal);
-            }
+            auto type = isLFO ? ModulationManager::ModulationSource::LFO
+                              : ModulationManager::ModulationSource::Envelope;
+            processor.getModulationManager().setAssignment(parameterID,
+                ModulationManager::makeDefaultRange(type, index, normalizedBase));
         }
-        
+
         setAssignedSource(isLFO, index);
         DBG((isLFO ? "LFO " : "Envelope ") << (index + 1) << " assigned to " << parameterID);
     }

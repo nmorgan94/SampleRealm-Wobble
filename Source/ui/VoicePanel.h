@@ -23,25 +23,25 @@ public:
         voicesDisplay.setLabel("VOICES");
         voicesDisplay.setRange(1, Parameters::maxVoices);
         voicesDisplay.setShowSign(false);
-        voicesDisplay.attachToParameter(apvts, "num_voices");
+        voicesDisplay.attachToParameter(proc, apvts, "num_voices");
         addAndMakeVisible(voicesDisplay);
 
         unisonDisplay.setLabel("UNISON");
         unisonDisplay.setRange(1, Parameters::maxUnison);
         unisonDisplay.setShowSign(false);
-        unisonDisplay.attachToParameter(apvts, "unison_voices");
+        unisonDisplay.attachToParameter(proc, apvts, "unison_voices");
         addAndMakeVisible(unisonDisplay);
 
         detuneDisplay.setLabel("DETUNE");
         detuneDisplay.setRange(0, 100);
         detuneDisplay.setShowSign(false);
-        detuneDisplay.attachToParameter(apvts, "unison_detune");
+        detuneDisplay.attachToParameter(proc, apvts, "unison_detune");
         addAndMakeVisible(detuneDisplay);
 
         spreadDisplay.setLabel("SPREAD");
         spreadDisplay.setRange(0, 100);
         spreadDisplay.setShowSign(false);
-        spreadDisplay.attachToParameter(apvts, "unison_spread");
+        spreadDisplay.attachToParameter(proc, apvts, "unison_spread");
         addAndMakeVisible(spreadDisplay);
 
         glideLabel.setText("Glide", juce::dontSendNotification);

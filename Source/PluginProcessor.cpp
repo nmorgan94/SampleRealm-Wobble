@@ -64,15 +64,15 @@ int AudioPluginAudioProcessor::getIntParam(const juce::String& paramID) const
 
 float AudioPluginAudioProcessor::getModulatedParam(const juce::String& paramID) const
 {
-    auto* param = dynamic_cast<juce::AudioParameterFloat*>(apvts.getParameter(paramID));
+    auto* param = dynamic_cast<juce::RangedAudioParameter*>(apvts.getParameter(paramID));
     if (!param)
         return 0.0f;
-    
-    float baseValue = param->get();
+
+    auto range = param->getNormalisableRange();
     auto assignment = modulationManager.getAssignment(paramID);
-    
+
     if (!assignment.isAssigned())
-        return baseValue;
+        return range.convertFrom0to1(param->getValue());
     
     // Get modulation value from LFO or Envelope
     float modulationValue = assignment.isLFO()
@@ -80,9 +80,8 @@ float AudioPluginAudioProcessor::getModulatedParam(const juce::String& paramID) 
         : envelopes[assignment.sourceIndex].getCurrentLevel();
     
     // Apply modulation
-    auto range = param->getNormalisableRange();
     float modulated = modulationManager.calculateModulatedValue(modulationValue, assignment.minValue, assignment.maxValue);
-    
+
     return range.convertFrom0to1(modulated);
 }
 
@@ -459,7 +458,7 @@ void AudioPluginAudioProcessor::updateFilter()
 
 void AudioPluginAudioProcessor::updateVoiceCount()
 {
-    const int desiredVoices = getIntParam("num_voices");
+    const int desiredVoices = juce::roundToInt(getModulatedParam("num_voices"));
 
     if (desiredVoices == currentVoiceCount)
         return;

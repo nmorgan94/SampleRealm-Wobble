@@ -2,7 +2,11 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 
-class ModulationManager
+#include <array>
+#include <memory>
+#include <unordered_map>
+
+class ModulationManager : private juce::ValueTree::Listener
 {
 public:
     enum class ModulationSource
@@ -24,26 +28,38 @@ public:
         bool isEnvelope() const { return sourceType == ModulationSource::Envelope; }
     };
     
-    ModulationManager() = default;
-    
+    ModulationManager() { rebuildSnapshot(); }
+
+    ~ModulationManager() override
+    {
+        if (state.isValid())
+            state.removeListener(this);
+    }
+
     void initialise(juce::ValueTree treeState, juce::UndoManager* treeUndoManager)
     {
+        if (state.isValid())
+            state.removeListener(this);
+
         state = treeState;
         undoManager = treeUndoManager;
+
+        if (state.isValid())
+            state.addListener(this);
+
+        rebuildSnapshot();
     }
     
-    void assignLFO(const juce::String& parameterID, int lfoIndex, float minValue = 0.0f, float maxValue = 1.0f)
+    // Apply an assignment struct directly (clears the routing when unassigned).
+    void setAssignment(const juce::String& parameterID, const ModulationAssignment& assignment)
     {
-        if (isValidSourceIndex(lfoIndex))
-            setAssignment(parameterID, ModulationSource::LFO, lfoIndex, minValue, maxValue);
+        if (assignment.isAssigned())
+            setAssignment(parameterID, assignment.sourceType, assignment.sourceIndex,
+                          assignment.minValue, assignment.maxValue);
+        else
+            clearAssignment(parameterID);
     }
-    
-    void assignEnvelope(const juce::String& parameterID, int envIndex, float minValue = 0.0f, float maxValue = 1.0f)
-    {
-        if (isValidSourceIndex(envIndex))
-            setAssignment(parameterID, ModulationSource::Envelope, envIndex, minValue, maxValue);
-    }
-    
+
     void clearAssignment(const juce::String& parameterID)
     {
         auto assignmentNode = findAssignment(parameterID);
@@ -51,24 +67,93 @@ public:
             state.removeChild(assignmentNode, undoManager);
     }
     
+    // Copies the assignment out from under a short lock, so this is safe to call
+    // from the audio thread (it never holds a reference to the snapshot).
     ModulationAssignment getAssignment(const juce::String& parameterID) const
     {
-        return toAssignment(findAssignment(parameterID));
+        const juce::SpinLock::ScopedLockType sl(snapshotLock);
+        if (snapshot)
+        {
+            auto it = snapshot->assignments.find(parameterID);
+            if (it != snapshot->assignments.end())
+                return it->second;
+        }
+        return {};
     }
     
     float calculateModulatedValue(float sourceValue, float minValue, float maxValue) const
     {
         return juce::jlimit(0.0f, 1.0f, minValue + sourceValue * (maxValue - minValue));
     }
-    
+
+    static ModulationAssignment makeDefaultRange(ModulationSource sourceType, int sourceIndex,
+                                                 float base, float depth = 0.25f)
+    {
+        ModulationAssignment assignment;
+        assignment.sourceType = sourceType;
+        assignment.sourceIndex = sourceIndex;
+
+        if (sourceType == ModulationSource::Envelope)
+        {
+            assignment.minValue = base;
+            assignment.maxValue = juce::jmin(1.0f, base + depth);
+        }
+        else
+        {
+            assignment.minValue = juce::jlimit(0.0f, 1.0f, base - depth);
+            assignment.maxValue = juce::jmin(1.0f, base + depth);
+        }
+
+        return assignment;
+    }
+
+    static void applyDepthChange(ModulationAssignment& assignment, float base, float delta)
+    {
+        if (assignment.isEnvelope())
+        {
+            const float roomAbove = juce::jmax(0.0f, 1.0f - base);
+            const float desiredDepth = (assignment.maxValue - assignment.minValue) + delta;
+            const float depth = juce::jlimit(juce::jmin(0.05f, roomAbove), roomAbove, desiredDepth);
+
+            assignment.minValue = base;
+            assignment.maxValue = base + depth;
+        }
+        else
+        {
+            const float currentDepth = (assignment.maxValue - assignment.minValue) * 0.5f;
+            const float desiredDepth = juce::jlimit(0.05f, 1.0f, currentDepth + delta);
+            const float roomBelow = base, roomAbove = 1.0f - base;
+
+            if (desiredDepth <= juce::jmin(roomBelow, roomAbove))
+            {
+                assignment.minValue = base - desiredDepth;
+                assignment.maxValue = base + desiredDepth;
+            }
+            else
+            {
+                const float actualDepth = juce::jmin(desiredDepth, juce::jmax(roomBelow, roomAbove));
+                assignment.minValue = juce::jmax(0.0f, base - actualDepth);
+                assignment.maxValue = juce::jmin(1.0f, base + actualDepth);
+            }
+        }
+    }
+
     bool isLFOAssigned(int lfoIndex) const
     {
-        return isSourceAssigned(ModulationSource::LFO, lfoIndex);
+        if (! isValidSourceIndex(lfoIndex))
+            return false;
+
+        const juce::SpinLock::ScopedLockType sl(snapshotLock);
+        return snapshot && snapshot->lfoAssigned[(size_t) lfoIndex];
     }
-    
+
     bool isEnvelopeAssigned(int envIndex) const
     {
-        return isSourceAssigned(ModulationSource::Envelope, envIndex);
+        if (! isValidSourceIndex(envIndex))
+            return false;
+
+        const juce::SpinLock::ScopedLockType sl(snapshotLock);
+        return snapshot && snapshot->envAssigned[(size_t) envIndex];
     }
 
 private:
@@ -115,22 +200,6 @@ private:
         return {};
     }
     
-    bool isSourceAssigned(ModulationSource sourceType, int sourceIndex) const
-    {
-        if (! state.isValid())
-            return false;
-        
-        for (auto child : state)
-        {
-            if (child.hasType(IDs::assignment)
-                && static_cast<int>(child.getProperty(IDs::sourceType, 0)) == static_cast<int>(sourceType)
-                && static_cast<int>(child.getProperty(IDs::sourceIndex, -1)) == sourceIndex)
-                return true;
-        }
-        
-        return false;
-    }
-    
     void setAssignment(const juce::String& parameterID, ModulationSource sourceType, int sourceIndex, float minValue, float maxValue)
     {
         if (! state.isValid())
@@ -149,9 +218,68 @@ private:
         assignmentNode.setProperty(IDs::minValue, minValue, undoManager);
         assignmentNode.setProperty(IDs::maxValue, maxValue, undoManager);
     }
-    
+
+    struct StringHash
+    {
+        size_t operator() (const juce::String& s) const noexcept { return (size_t) s.hashCode64(); }
+    };
+
+    using AssignmentMap = std::unordered_map<juce::String, ModulationAssignment, StringHash>;
+
+    struct Snapshot
+    {
+        AssignmentMap assignments;
+        std::array<bool, 4> lfoAssigned {};
+        std::array<bool, 4> envAssigned {};
+    };
+
+    // Rebuilt on the message thread (direct edits via the ValueTree::Listener,
+    // and preset loads via initialise) and published under the SpinLock.
+    void rebuildSnapshot()
+    {
+        auto snap = std::make_shared<Snapshot>();
+
+        if (state.isValid())
+        {
+            for (auto child : state)
+            {
+                if (! child.hasType(IDs::assignment))
+                    continue;
+
+                auto assignment = toAssignment(child);
+                snap->assignments[child[IDs::parameterID].toString()] = assignment;
+
+                if (assignment.isAssigned())
+                {
+                    if (assignment.isLFO())
+                        snap->lfoAssigned[(size_t) assignment.sourceIndex] = true;
+                    else if (assignment.isEnvelope())
+                        snap->envAssigned[(size_t) assignment.sourceIndex] = true;
+                }
+            }
+        }
+
+        std::shared_ptr<const Snapshot> old;
+        {
+            const juce::SpinLock::ScopedLockType sl(snapshotLock);
+            old = std::move(snapshot);
+            snapshot = std::move(snap);
+        }
+        // 'old' is released here, on the message thread, outside the lock. The
+        // audio thread never holds a snapshot reference, so it can never be the
+        // one to free a retired snapshot.
+    }
+
+    void valueTreePropertyChanged(juce::ValueTree&, const juce::Identifier&) override { rebuildSnapshot(); }
+    void valueTreeChildAdded(juce::ValueTree&, juce::ValueTree&) override { rebuildSnapshot(); }
+    void valueTreeChildRemoved(juce::ValueTree&, juce::ValueTree&, int) override { rebuildSnapshot(); }
+    void valueTreeChildOrderChanged(juce::ValueTree&, int, int) override { rebuildSnapshot(); }
+    void valueTreeParentChanged(juce::ValueTree&) override { rebuildSnapshot(); }
+
     juce::ValueTree state;
     juce::UndoManager* undoManager = nullptr;
-    
+    std::shared_ptr<const Snapshot> snapshot;
+    mutable juce::SpinLock snapshotLock;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ModulationManager)
 };

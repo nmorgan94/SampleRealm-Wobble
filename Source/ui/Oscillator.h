@@ -43,7 +43,7 @@ public:
         addAndMakeVisible(gainSlider);
         
         addAndMakeVisible(semitoneDisplay);
-        semitoneDisplay.attachToParameter(apvts, pitchParamID);
+        semitoneDisplay.attachToParameter(proc, apvts, pitchParamID);
 
         enableAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
             apvts, enableParamID, enableButton);

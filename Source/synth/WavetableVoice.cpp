@@ -143,9 +143,9 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
     static const juce::String unisonSpreadID { "unison_spread" };
 
     const int   unisonCount  = juce::jlimit(1, Parameters::maxUnison,
-                                            owner.getIntParam(unisonVoicesID));
-    const float detuneCents  = static_cast<float>(owner.getIntParam(unisonDetuneID));
-    const float spreadAmount = static_cast<float>(owner.getIntParam(unisonSpreadID)) / 100.0f; // 0..1
+                                            juce::roundToInt(owner.getModulatedParam(unisonVoicesID)));
+    const float detuneCents  = static_cast<float>(juce::roundToInt(owner.getModulatedParam(unisonDetuneID)));
+    const float spreadAmount = static_cast<float>(juce::roundToInt(owner.getModulatedParam(unisonSpreadID))) / 100.0f; // 0..1
     const float unisonGain   = 1.0f / std::sqrt(static_cast<float>(unisonCount)); // level compensation
 
     double unisonRatio[Parameters::maxUnison];
@@ -177,7 +177,7 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
         oscGain[osc]    = owner.getModulatedParam(gainIDs[osc]);
         oscData[osc]    = wavetables[osc].getReadPointer(0); // cached pointer, hoisted out of the sample loop
 
-        const int    pitchOffset   = owner.getIntParam(pitchIDs[osc]);
+        const int    pitchOffset   = juce::roundToInt(owner.getModulatedParam(pitchIDs[osc]));
         const double oscFrequency  = juce::MidiMessage::getMidiNoteInHertz(currentMidiNote + pitchOffset) * currentGlideRatio;
         const double baseIncrement = oscFrequency * wavetableSize / getSampleRate();
 
