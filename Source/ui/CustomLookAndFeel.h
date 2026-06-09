@@ -33,23 +33,22 @@ public:
                          bool /*shouldDrawButtonAsHighlighted*/, bool /*shouldDrawButtonAsDown*/) override
     {
         auto bounds = button.getLocalBounds().toFloat().reduced(2.0f);
-        
-        // Style for SYNC buttons only
-        if (button.getButtonText() == "SYNC")
+
+        if (button.getProperties().getWithDefault("pillToggle", false))
         {
             auto neonGreen = juce::Colour(0xff00ff41);
             auto greyBorder = juce::Colour(0xff3a3a3a);
-            
+
             // Draw rounded rectangle border
             g.setColour(button.getToggleState() ? neonGreen : greyBorder);
             g.drawRoundedRectangle(bounds, 3.0f, 1.5f);
-            
+
             // Draw text
             g.setColour(button.getToggleState() ? neonGreen : juce::Colour(0xff666666));
             g.setFont(orbitronBold().withHeight(10.0f));
-            g.drawText("SYNC", bounds, juce::Justification::centred);
-            
-            return; 
+            g.drawText(button.getButtonText(), bounds, juce::Justification::centred);
+
+            return;
         }
         
         auto size = juce::jmin(bounds.getWidth(), bounds.getHeight());

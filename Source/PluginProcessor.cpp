@@ -196,7 +196,10 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
     spec.numChannels = 2;
     filter.prepare(spec);
     updateFilter();
-    
+
+    spec.numChannels = static_cast<juce::uint32>(juce::jmax(1, getTotalNumOutputChannels()));
+    drive.prepare(spec);
+
     synth.clearVoices();
     synth.clearSounds();
 
@@ -323,14 +326,19 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
 
     updateFilter();
 
+    const bool filterEnabled = getBoolParam("filter_enable");
+
     updateOscillatorTables(false);
 
     buffer.clear();
 
     synth.renderNextBlock(buffer, midiMessages, 0, buffer.getNumSamples());
-    
-    if (getBoolParam("filter_enable"))
+
+    if (filterEnabled)
     {
+        drive.setDrive(getModulatedParam("drive"));
+        drive.process(buffer, getBoolParam("drive_hq"));
+
         for (int channel = 0; channel < buffer.getNumChannels(); ++channel)
         {
             auto* channelData = buffer.getWritePointer(channel);

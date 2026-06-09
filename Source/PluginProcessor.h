@@ -9,6 +9,7 @@
 #include "synth/LFO.h"
 #include "synth/ADSREnvelope.h"
 #include "synth/Filter.h"
+#include "synth/Drive.h"
 #include "synth/OutputMeterState.h"
 #include "ModulationManager.h"
 #include "Parameters.h"
@@ -131,6 +132,7 @@ private:
     ModulationManager modulationManager;
     LFOCurveState lfoCurveState;
     Filter filter;
+    Drive drive;
     OutputMeterState outputMeterState;
     
     WaveformType currentWaveformTypes[3]  = { WaveformType::Sine, WaveformType::Sine, WaveformType::Sine };
@@ -148,6 +150,6 @@ private:
     void updateLFOs();
     void updateFilter();
     void updateVoiceCount();
-    
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioPluginAudioProcessor)
 };

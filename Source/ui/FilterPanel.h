@@ -15,6 +15,7 @@ public:
     FilterPanel(AudioPluginAudioProcessor& proc,
                 juce::AudioProcessorValueTreeState& apvts)
         : processor(proc),
+          driveSlider(proc, "drive"),
           cutoffSlider(proc, "filter_cutoff"),
           resonanceSlider(proc, "filter_resonance")
     {
@@ -36,22 +37,14 @@ public:
         modeSelector.addItem("Notch", 4);
         addAndMakeVisible(modeSelector);
         
-        cutoffLabel.setText("Cutoff", juce::dontSendNotification);
-        cutoffLabel.setJustificationType(juce::Justification::centred);
-        addAndMakeVisible(cutoffLabel);
-        
-        cutoffSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-        cutoffSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        addAndMakeVisible(cutoffSlider);
-        
-        resonanceLabel.setText("Resonance", juce::dontSendNotification);
-        resonanceLabel.setJustificationType(juce::Justification::centred);
-        addAndMakeVisible(resonanceLabel);
-        
-        resonanceSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
-        resonanceSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        addAndMakeVisible(resonanceSlider);
-        
+        setupKnob(cutoffLabel, cutoffSlider, "Cutoff");
+        setupKnob(resonanceLabel, resonanceSlider, "Resonance");
+        setupKnob(driveLabel, driveSlider, "Drive");
+
+        hqButton.setButtonText("HQ");
+        hqButton.getProperties().set("pillToggle", true);
+        addAndMakeVisible(hqButton);
+
         enableAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
             apvts, "filter_enable", enableButton);
         modeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
@@ -60,7 +53,11 @@ public:
             apvts, "filter_cutoff", cutoffSlider);
         resonanceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
             apvts, "filter_resonance", resonanceSlider);
-        
+        driveAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            apvts, "drive", driveSlider);
+        hqAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
+            apvts, "drive_hq", hqButton);
+
         addAndMakeVisible(responseDisplay);
     }
     
@@ -111,7 +108,7 @@ public:
         enableButton.setBounds(topRow.removeFromLeft(30));
         topRow.removeFromLeft(10);
         titleLabel.setBounds(topRow.removeFromLeft(80));
-        
+
         bounds.removeFromTop(5);
         
         auto modeRow = bounds.removeFromTop(25);
@@ -126,20 +123,36 @@ public:
         bounds.removeFromTop(5);
         
         auto knobArea = bounds;
-        int knobWidth = knobArea.getWidth() / 2;
-        
-        auto cutoffArea = knobArea.removeFromLeft(knobWidth).reduced(5);
-        cutoffLabel.setBounds(cutoffArea.removeFromTop(15));
-        auto cutoffSliderSize = juce::jmin(cutoffArea.getWidth(), cutoffArea.getHeight());
-        cutoffSlider.setBounds(cutoffArea.withSizeKeepingCentre(cutoffSliderSize, cutoffSliderSize));
-        
-        auto resonanceArea = knobArea.reduced(5);
-        resonanceLabel.setBounds(resonanceArea.removeFromTop(15));
-        auto resonanceSliderSize = juce::jmin(resonanceArea.getWidth(), resonanceArea.getHeight());
-        resonanceSlider.setBounds(resonanceArea.withSizeKeepingCentre(resonanceSliderSize, resonanceSliderSize));
+        int knobWidth = knobArea.getWidth() / 3;
+
+        layoutKnob(knobArea.removeFromLeft(knobWidth).reduced(5), driveLabel, driveSlider);
+
+        auto knobBounds = driveSlider.getBounds();
+        hqButton.setBounds(knobBounds.removeFromTop(14).removeFromRight(20).translated(15, 0));
+
+        layoutKnob(knobArea.removeFromLeft(knobWidth).reduced(5), cutoffLabel, cutoffSlider);
+        layoutKnob(knobArea.reduced(5), resonanceLabel, resonanceSlider);
     }
     
 private:
+    void setupKnob(juce::Label& label, juce::Slider& slider, const juce::String& text)
+    {
+        label.setText(text, juce::dontSendNotification);
+        label.setJustificationType(juce::Justification::centred);
+        addAndMakeVisible(label);
+
+        slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
+        slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        addAndMakeVisible(slider);
+    }
+
+    void layoutKnob(juce::Rectangle<int> cell, juce::Label& label, juce::Slider& slider)
+    {
+        label.setBounds(cell.removeFromTop(15));
+        auto size = juce::jmin(cell.getWidth(), cell.getHeight());
+        slider.setBounds(cell.withSizeKeepingCentre(size, size));
+    }
+
     void buttonClicked(juce::Button*) override
     {
         bool isEnabled = enableButton.getToggleState();
@@ -157,6 +170,13 @@ private:
         resonanceLabel.setAlpha(alpha);
         resonanceSlider.setAlpha(alpha);
         resonanceSlider.setEnabled(isEnabled);
+
+        driveLabel.setAlpha(alpha);
+        driveSlider.setAlpha(alpha);
+        driveSlider.setEnabled(isEnabled);
+        hqButton.setAlpha(alpha);
+        hqButton.setEnabled(isEnabled);
+
         responseDisplay.setEnabled(isEnabled);
         
         if (isEnabled && isVisible())
@@ -175,18 +195,24 @@ private:
     juce::Label modeLabel;
     juce::ComboBox modeSelector;
     
+    juce::Label driveLabel;
+    ModulatableSlider driveSlider;
+    juce::ToggleButton hqButton;
+
     juce::Label cutoffLabel;
     ModulatableSlider cutoffSlider;
-    
+
     juce::Label resonanceLabel;
     ModulatableSlider resonanceSlider;
-    
+
     FilterResponseDisplay responseDisplay;
     
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> modeAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> cutoffAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> resonanceAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> driveAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> hqAttachment;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FilterPanel)
 };

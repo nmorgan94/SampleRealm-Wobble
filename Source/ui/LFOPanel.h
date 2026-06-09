@@ -56,9 +56,7 @@ public:
                 processor.apvts, modeParamID, *modeComboBoxes.back()));
             
             auto syncButton = std::make_unique<juce::ToggleButton>("SYNC");
-            syncButton->setColour(juce::ToggleButton::textColourId, juce::Colour(0xff00ff41));
-            syncButton->setColour(juce::ToggleButton::tickColourId, juce::Colour(0xff00ff41));
-            syncButton->setColour(juce::ToggleButton::tickDisabledColourId, juce::Colour(0xff666666));
+            syncButton->getProperties().set("pillToggle", true);
             container->addAndMakeVisible(syncButton.get());
             syncButtons.push_back(std::move(syncButton));
             
