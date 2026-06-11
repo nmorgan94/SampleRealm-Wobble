@@ -13,7 +13,8 @@ class VoicePanel : public juce::Component
 public:
     VoicePanel(AudioPluginAudioProcessor& proc,
                juce::AudioProcessorValueTreeState& apvts)
-        : glideSlider(proc, "glide_time")
+        : coarsePitchSlider(proc, "coarse_pitch"),
+          glideSlider(proc, "glide_time")
     {
         titleLabel.setText("VOICE", juce::dontSendNotification);
         titleLabel.setJustificationType(juce::Justification::centredLeft);
@@ -43,6 +44,15 @@ public:
         spreadDisplay.setShowSign(false);
         spreadDisplay.attachToParameter(proc, apvts, "unison_spread");
         addAndMakeVisible(spreadDisplay);
+
+        coarsePitchLabel.setText("Pitch", juce::dontSendNotification);
+        coarsePitchLabel.setJustificationType(juce::Justification::centred);
+        addAndMakeVisible(coarsePitchLabel);
+
+        addAndMakeVisible(coarsePitchSlider);
+
+        coarsePitchAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
+            apvts, "coarse_pitch", coarsePitchSlider);
 
         glideLabel.setText("Glide", juce::dontSendNotification);
         glideLabel.setJustificationType(juce::Justification::centred);
@@ -88,21 +98,28 @@ public:
             stepper->setBounds(slot.withSizeKeepingCentre(slot.getWidth(), stepperHeight));
         }
 
-        glideLabel.setBounds(rightColumn.removeFromTop(15));
+        auto topHalf = rightColumn.removeFromTop(rightColumn.getHeight() / 2);
+        coarsePitchLabel.setBounds(topHalf.removeFromTop(15));
+        auto pitchSize = juce::jmin(topHalf.getWidth(), topHalf.getHeight());
+        coarsePitchSlider.setBounds(topHalf.withSizeKeepingCentre(pitchSize, pitchSize));
 
-        auto sliderSize = juce::jmin(rightColumn.getWidth(), rightColumn.getHeight());
-        glideSlider.setBounds(rightColumn.withSizeKeepingCentre(sliderSize, sliderSize));
+        glideLabel.setBounds(rightColumn.removeFromTop(15));
+        auto glideSize = juce::jmin(rightColumn.getWidth(), rightColumn.getHeight());
+        glideSlider.setBounds(rightColumn.withSizeKeepingCentre(glideSize, glideSize));
     }
 
 private:
     juce::Label titleLabel;
+    juce::Label coarsePitchLabel;
     juce::Label glideLabel;
     StepperDisplay voicesDisplay;
     StepperDisplay unisonDisplay;
     StepperDisplay detuneDisplay;
     StepperDisplay spreadDisplay;
+    ModulatableSlider coarsePitchSlider;
     ModulatableSlider glideSlider;
 
+    std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> coarsePitchAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> glideAttachment;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(VoicePanel)

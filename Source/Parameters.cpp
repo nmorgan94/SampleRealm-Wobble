@@ -113,6 +113,10 @@ namespace Parameters
             juce::ParameterID{"glide_time", versionHint}, "Glide Time",
             juce::NormalisableRange<float>(0.0f, 2.0f, 0.001f, 0.4f), 0.0f));
 
+        params.push_back(std::make_unique<juce::AudioParameterFloat>(
+            juce::ParameterID{"coarse_pitch", versionHint}, "Coarse Pitch",
+            juce::NormalisableRange<float>(-36.0f, 36.0f, 0.01f), 0.0f));
+
         params.push_back(std::make_unique<juce::AudioParameterInt>(
             juce::ParameterID{"num_voices", versionHint}, "Voices", 1, maxVoices, maxVoices));
 
