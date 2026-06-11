@@ -30,6 +30,8 @@ public:
     {
         // Create envelope editor
         envelopeEditor = std::make_unique<EnvelopeEditor>();
+        envelopeEditor->setEnvelope(&processor.getEnvelope(static_cast<size_t>(envIndex)),
+                                    &processor.getModulationManager(), envIndex);
         addAndMakeVisible(envelopeEditor.get());
         
         // Create ADSR sliders

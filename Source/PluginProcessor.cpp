@@ -314,7 +314,8 @@ void AudioPluginAudioProcessor::processBlock (juce::AudioBuffer<float>& buffer,
     }
     for (int i = 0; i < 4; ++i)
     {
-        if (modulationManager.isEnvelopeAssigned(i) && envelopes[i].isActive())
+        const bool shouldAdvance = (i == 0) || modulationManager.isEnvelopeAssigned(i);
+        if (shouldAdvance && envelopes[i].isActive())
         {
             // Advance per-sample like the per-voice envelope does
             for (int sample = 0; sample < buffer.getNumSamples(); ++sample)

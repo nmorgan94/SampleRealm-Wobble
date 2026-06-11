@@ -144,6 +144,17 @@ public:
         return currentLevel;
     }
 
+    float getStageProgress() const
+    {
+        switch (state)
+        {
+            case State::Attack:  return juce::jlimit(0.0f, 1.0f, static_cast<float>(stateTime / attack));
+            case State::Decay:   return juce::jlimit(0.0f, 1.0f, static_cast<float>(stateTime / decay));
+            case State::Release: return juce::jlimit(0.0f, 1.0f, static_cast<float>(stateTime / release));
+            default:             return 0.0f;
+        }
+    }
+
 private:
     State state = State::Idle;
     double sampleRate = 44100.0;
