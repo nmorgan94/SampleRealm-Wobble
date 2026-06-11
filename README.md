@@ -1,13 +1,29 @@
 # SampleRealm: Wobble
 
-A 3-oscillator wavetable synthesizer
+A 3-oscillator wavetable synthesizer with deep modulation
 
 ## Features
 
+### Oscillators
 - 3 independent wavetable oscillators
-- 4 waveform types: Sine, Saw, Square, Triangle
+- 11 waveforms — Sine, Saw, Square, Triangle, Formant Sine, Wavefolded Sine, Double Saw, Resonant Saw, Log Square, Asymmetric Rectified Sine, and Interleaved Saw Pulse
+- Continuous morphing between adjacent waveforms
+- Coarse and fine pitch control per oscillator
+- Glide / portamento for smooth pitch transitions
+- Unison with adjustable voice count, detune, and stereo spread
 - Real-time waveform visualization
 - 8-voice polyphony
+
+### Filters & Distortion
+- Multi-mode filter — Lowpass, Highpass, Bandpass, Notch
+- Pre-filter distortion (drive)
+- Live filter-response display
+
+### Modulation
+- Assignable LFOs with custom drawable curves
+- Assignable ADSR envelopes
+- Modulation routing manager to assign sources to destinations
+- Envelope and LFO playhead visualization
 
 ## Building
 

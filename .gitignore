@@ -3,6 +3,7 @@ build/
 build-*/
 cmake-build-*/
 out/
+Installer/
 
 # CMake
 CMakeCache.txt
