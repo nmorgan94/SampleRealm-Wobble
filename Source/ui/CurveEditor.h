@@ -21,14 +21,7 @@ public:
     
     CurveEditor() : lfo(nullptr), tension(0.5f)
     {
-        // Initialize with a simple sine-like curve
-        controlPoints.clear();
-        controlPoints.push_back(ControlPoint(0.0f, 0.5f));
-        controlPoints.push_back(ControlPoint(0.25f, 1.0f));
-        controlPoints.push_back(ControlPoint(0.5f, 0.5f));
-        controlPoints.push_back(ControlPoint(0.75f, 0.0f));
-        controlPoints.push_back(ControlPoint(1.0f, 0.5f));
-        
+        controlPoints = defaultControlPoints();
         setMouseCursor(juce::MouseCursor::PointingHandCursor);
     }
     
@@ -232,27 +225,50 @@ public:
     // Get interpolated value at position x (0.0 to 1.0) using Catmull-Rom spline
     float getValueAt(float x) const
     {
-        // Step 1: Validate input
+        return evaluate(controlPoints, tension, x);
+    }
+
+    // The editor's default sine-like curve. Shared so the processor can fall back to it when
+    // an LFO has no saved curve points.
+    static std::vector<ControlPoint> defaultControlPoints()
+    {
+        return {
+            ControlPoint(0.0f,  0.5f),
+            ControlPoint(0.25f, 1.0f),
+            ControlPoint(0.5f,  0.5f),
+            ControlPoint(0.75f, 0.0f),
+            ControlPoint(1.0f,  0.5f)
+        };
+    }
+
+    // UI-free evaluation of (control points + tension) at x in [0,1]. Used both for the editor's
+    // own rendering and by the processor to rebuild the audio LFO lookup table from saved state.
+    static float evaluate(const std::vector<ControlPoint>& points, float tension, float x)
+    {
         x = juce::jlimit(0.0f, 1.0f, x);
-        if (controlPoints.size() < 2)
+        if (points.size() < 2)
             return 0.5f;
-        
-        // Step 2: Find which two control points x is between
-        size_t segmentIndex = findSegmentIndex(x);
-        if (segmentIndex >= controlPoints.size() - 1)
-            return controlPoints.back().y;
-        
-        // Step 3: Get the 4 points needed for smooth interpolation
-        const auto& startPoint = controlPoints[segmentIndex];
-        const auto& endPoint = controlPoints[segmentIndex + 1];
-        const auto& beforePoint = (segmentIndex > 0) ? controlPoints[segmentIndex - 1] : startPoint;
-        const auto& afterPoint = (segmentIndex + 2 < controlPoints.size()) ? controlPoints[segmentIndex + 2] : endPoint;
-        
-        // Step 4: Calculate how far along we are between start and end (0.0 to 1.0)
-        float t = (x - startPoint.x) / (endPoint.x - startPoint.x);
-        
-        // Step 5: Apply smooth interpolation formula
-        return catmullRom(beforePoint.y, startPoint.y, endPoint.y, afterPoint.y, t);
+
+        size_t segmentIndex = points.size() - 1;
+        for (size_t i = 0; i < points.size() - 1; ++i)
+        {
+            if (x <= points[i + 1].x)
+            {
+                segmentIndex = i;
+                break;
+            }
+        }
+
+        if (segmentIndex >= points.size() - 1)
+            return points.back().y;
+
+        const auto& startPoint  = points[segmentIndex];
+        const auto& endPoint    = points[segmentIndex + 1];
+        const auto& beforePoint = (segmentIndex > 0) ? points[segmentIndex - 1] : startPoint;
+        const auto& afterPoint  = (segmentIndex + 2 < points.size()) ? points[segmentIndex + 2] : endPoint;
+
+        const float t = (x - startPoint.x) / (endPoint.x - startPoint.x);
+        return catmullRom(beforePoint.y, startPoint.y, endPoint.y, afterPoint.y, t, tension);
     }
 
     const std::vector<ControlPoint>& getControlPoints() const { return controlPoints; }
@@ -281,19 +297,8 @@ public:
     void removeListener(Listener* listener) { listeners.remove(listener); }
 
 private:
-    // Helper: Find which segment contains the given x position
-    size_t findSegmentIndex(float x) const
-    {
-        for (size_t i = 0; i < controlPoints.size() - 1; ++i)
-        {
-            if (x <= controlPoints[i + 1].x)
-                return i;
-        }
-        return controlPoints.size() - 1;
-    }
-    
-    // Catmull-Rom spline with tension control
-    float catmullRom(float y0, float y1, float y2, float y3, float t) const
+    // Catmull-Rom spline with tension control (static so the processor can reuse it).
+    static float catmullRom(float y0, float y1, float y2, float y3, float t, float tension)
     {
         float cardinalParam = (tension - 0.5f) * 2.0f;
         float tensionScale = (1.0f - cardinalParam) * 0.5f;

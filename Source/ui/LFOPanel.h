@@ -85,24 +85,11 @@ public:
         tabbedComponent.setOutline(0);
         addAndMakeVisible(tabbedComponent);
         
-        // Register as listener
+        // Register as listeners, then load each LFO's saved curve + tension.
         for (size_t i = 0; i < 4; ++i)
-        {
             curveEditors[i]->addListener(this);
-            
-            const auto& savedPoints = processor.getLFOCurvePoints(i);
-            if (!savedPoints.empty())
-                curveEditors[i]->setControlPoints(savedPoints);
-            
-            juce::String tensionParamID = "lfo" + juce::String(i + 1) + "_tension";
-            if (auto* param = processor.apvts.getParameter(tensionParamID))
-            {
-                float tensionValue = param->getValue();
-                curveEditors[i]->setTension(tensionValue);
-            }
-            
-            syncCurveToLFO(curveEditors[i].get(), i);
-        }
+
+        reloadFromState();
     }
     
     ~LFOPanel() override
@@ -114,6 +101,26 @@ public:
         }
     }
     
+    // Re-reads every LFO's saved curve + tension after a preset load and re-syncs the
+    // audio LFOs. The APVTS-attached controls (mode/rate/sync/tension knobs) refresh
+    // themselves via their attachments; only the drawn curves need this manual reload.
+    void reloadFromState()
+    {
+        for (size_t i = 0; i < 4; ++i)
+        {
+            auto savedPoints = processor.getLFOCurvePoints(i);
+            curveEditors[i]->setControlPoints(savedPoints.empty()
+                ? CurveEditor::defaultControlPoints()
+                : savedPoints);
+
+            juce::String tensionParamID = "lfo" + juce::String(i + 1) + "_tension";
+            if (auto* param = processor.apvts.getParameter(tensionParamID))
+                curveEditors[i]->setTension(param->getValue());
+
+            syncCurveToLFO(curveEditors[i].get(), i);
+        }
+    }
+
     // CurveEditor::Listener
     void curveChanged(CurveEditor* editor) override
     {

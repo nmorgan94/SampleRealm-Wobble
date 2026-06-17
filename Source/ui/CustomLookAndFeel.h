@@ -97,12 +97,14 @@ public:
         g.setColour(juce::Colour(0xff3a3a3a));
         g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
         
-        // Arrow on right side
-        auto arrowZone = bounds.removeFromRight(20.0f).reduced(5.0f);
+        // Arrow on right side — fixed-size triangle, centred in the box height
+        auto arrowZone = bounds.removeFromRight(20.0f);
+        auto arrowBounds = juce::Rectangle<float>(10.0f, 6.0f)
+                               .withCentre(arrowZone.getCentre());
         juce::Path arrow;
-        arrow.addTriangle(arrowZone.getX(), arrowZone.getY(),
-                         arrowZone.getRight(), arrowZone.getY(),
-                         arrowZone.getCentreX(), arrowZone.getBottom());
+        arrow.addTriangle(arrowBounds.getX(), arrowBounds.getY(),
+                         arrowBounds.getRight(), arrowBounds.getY(),
+                         arrowBounds.getCentreX(), arrowBounds.getBottom());
         
         g.setColour(box.isEnabled() ? juce::Colour(0xff00ff41) : juce::Colour(0xff666666));
         g.fillPath(arrow);

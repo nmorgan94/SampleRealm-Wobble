@@ -55,7 +55,17 @@ public:
     //==============================================================================
     void getStateInformation (juce::MemoryBlock& destData) override;
     void setStateInformation (const void* data, int sizeInBytes) override;
-    
+
+    // Shared save/restore primitives, reused by both the DAW state path above and
+    // the preset system. getStateTree() is the full tree (params + ModMatrix + LFOCurves);
+    // applyStateTree() swaps it in and re-points the modulation/LFO-curve managers.
+    juce::ValueTree getStateTree();
+    bool applyStateTree(const juce::ValueTree& newState);  // false if newState wasn't a valid state tree
+
+    // Resets all parameters to their defaults and clears modulation routing / LFO curves.
+    // Backs the "Init" preset.
+    void resetToDefaultState();
+
     //==============================================================================
     bool getBoolParam(const juce::String& paramID) const;
     float getFloatParam(const juce::String& paramID) const;
@@ -121,6 +131,7 @@ public:
 private:
     static inline const juce::Identifier modMatrixStateID { "ModMatrix" };
     static inline const juce::Identifier lfoCurvesStateID { "LFOCurves" };
+    static inline const juce::Identifier presetNameID    { "currentPreset" };
     //==============================================================================
     juce::UndoManager undoManager;
     WavetableSynthesiser synth { *this };
@@ -144,10 +155,17 @@ private:
     std::vector<int> heldNotes;
     
     static juce::ValueTree getOrCreateStateChild(juce::ValueTree parent, const juce::Identifier& childID);
-    
+
+    // Points the modulation/LFO-curve managers at their state children and rebuilds the
+    // derived LFO tables. Shared by the constructor and every state-restore path.
+    void reinitialiseStateManagers();
+
     void updateOscillatorTables(bool forceRegen);
     void blendWavetable(int oscIndex, float morph);
     void updateLFOs();
+    // Rebuilds each audio LFO's lookup table from the persisted curve points + tension param,
+    // so the LFO shape is restored from state without needing the editor open.
+    void rebuildLFOTablesFromState();
     void updateFilter();
     void updateVoiceCount();
 

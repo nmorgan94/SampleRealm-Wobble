@@ -1,5 +1,6 @@
 #include "PluginProcessor.h"
 #include "PluginEditor.h"
+#include "ui/ModulatableSlider.h"
 
 //==============================================================================
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
@@ -37,6 +38,10 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
     masterMeter = std::make_unique<MasterMeter>(processorRef, processorRef.apvts);
     addAndMakeVisible(masterMeter.get());
 
+    presetBar = std::make_unique<PresetBar>(processorRef);
+    presetBar->onPresetLoaded = [this]() { refreshAfterPresetLoad(); };
+    addAndMakeVisible(presetBar.get());
+
     setSize (900, 600);
 }
 
@@ -54,8 +59,8 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
     
     g.setColour (juce::Colour(0xff00ff00));
     g.setFont (CustomLookAndFeel::orbitronBold().withHeight(24.0f));
-    auto titleArea = bounds.removeFromTop(70);
-    g.drawText ("SampleRealm: Wobble", titleArea, juce::Justification::centred);
+    auto titleArea = bounds.removeFromTop(70).withTrimmedLeft(10);
+    g.drawText ("SampleRealm: Wobble", titleArea, juce::Justification::centredLeft);
 }
 
 void AudioPluginAudioProcessorEditor::resized()
@@ -66,6 +71,10 @@ void AudioPluginAudioProcessorEditor::resized()
     topBar.removeFromRight(10);
     if (masterMeter != nullptr)
         masterMeter->setBounds(topBar.removeFromRight(90).reduced(0, 6));
+
+    topBar.removeFromLeft(290);
+    if (presetBar != nullptr)
+        presetBar->setBounds(topBar.removeFromLeft(180).reduced(0, 20));
     
     // Padding
     bounds.reduce(10, 5);
@@ -99,6 +108,32 @@ void AudioPluginAudioProcessorEditor::resized()
     
     lfoPanel->setBounds(rightSection.removeFromTop(panelHeight));
     rightSection.removeFromTop(10);
-    
+
     envelopePanel->setBounds(rightSection);
+}
+
+//==============================================================================
+namespace
+{
+    // Depth-first walk that re-reads each modulation slider's assignment from the manager.
+    void refreshModulatableSliders(juce::Component* component)
+    {
+        for (auto* child : component->getChildren())
+        {
+            if (auto* slider = dynamic_cast<ModulatableSlider*>(child))
+                slider->refreshAssignment();
+
+            refreshModulatableSliders(child);
+        }
+    }
+}
+
+void AudioPluginAudioProcessorEditor::refreshAfterPresetLoad()
+{
+    // APVTS-attached knobs/menus follow the new parameter values automatically. The two UI
+    // caches that don't are the modulation badges and the drawn LFO curves - refresh those.
+    refreshModulatableSliders(this);
+
+    if (lfoPanel != nullptr)
+        lfoPanel->reloadFromState();
 }

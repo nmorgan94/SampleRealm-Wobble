@@ -21,11 +21,7 @@ AudioPluginAudioProcessor::AudioPluginAudioProcessor()
                        ),
        apvts (*this, nullptr, "Parameters", Parameters::createLayout())
 {
-    auto modMatrixState = getOrCreateStateChild(apvts.state, modMatrixStateID);
-    auto lfoCurvesState = getOrCreateStateChild(apvts.state, lfoCurvesStateID);
-    
-    modulationManager.initialise(modMatrixState, &undoManager);
-    lfoCurveState.initialise(lfoCurvesState, &undoManager);
+    reinitialiseStateManagers();
 }
 
 AudioPluginAudioProcessor::~AudioPluginAudioProcessor()
@@ -166,6 +162,9 @@ void AudioPluginAudioProcessor::prepareToPlay (double sampleRate, int samplesPer
         lfos[i].prepare(sampleRate);
         lfos[i].setRate(getFloatParam("lfo" + juce::String(i + 1) + "_rate"));
     }
+
+    // Build the LFO shapes from saved state up-front (the editor may never open).
+    rebuildLFOTablesFromState();
     
     // Initialize envelopes
     for (int i = 0; i < 4; ++i)
@@ -368,9 +367,46 @@ juce::AudioProcessorEditor* AudioPluginAudioProcessor::createEditor()
 }
 
 //==============================================================================
+juce::ValueTree AudioPluginAudioProcessor::getStateTree()
+{
+    return apvts.copyState();
+}
+
+void AudioPluginAudioProcessor::reinitialiseStateManagers()
+{
+    auto modMatrixState = getOrCreateStateChild(apvts.state, modMatrixStateID);
+    auto lfoCurvesState = getOrCreateStateChild(apvts.state, lfoCurvesStateID);
+
+    modulationManager.initialise(modMatrixState, &undoManager);
+    lfoCurveState.initialise(lfoCurvesState, &undoManager);
+
+    rebuildLFOTablesFromState();
+}
+
+bool AudioPluginAudioProcessor::applyStateTree(const juce::ValueTree& newState)
+{
+    if (! newState.hasType (apvts.state.getType()))
+        return false;
+
+    apvts.replaceState (newState);
+    reinitialiseStateManagers();
+    return true;
+}
+
+void AudioPluginAudioProcessor::resetToDefaultState()
+{
+    for (auto* param : getParameters())
+        param->setValueNotifyingHost (param->getDefaultValue());
+
+    getOrCreateStateChild(apvts.state, modMatrixStateID).removeAllChildren (nullptr);
+    getOrCreateStateChild(apvts.state, lfoCurvesStateID).removeAllChildren (nullptr);
+
+    reinitialiseStateManagers();
+}
+
 void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)
 {
-    auto state = apvts.copyState();
+    auto state = getStateTree();
     std::unique_ptr<juce::XmlElement> xml (state.createXml());
     copyXmlToBinary (*xml, destData);
 }
@@ -378,18 +414,9 @@ void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData
 void AudioPluginAudioProcessor::setStateInformation (const void* data, int sizeInBytes)
 {
     std::unique_ptr<juce::XmlElement> xmlState (getXmlFromBinary (data, sizeInBytes));
-    
+
     if (xmlState.get() != nullptr)
-    {
-        if (xmlState->hasTagName (apvts.state.getType()))
-            apvts.replaceState (juce::ValueTree::fromXml (*xmlState));
-        
-        auto modMatrixState = getOrCreateStateChild(apvts.state, modMatrixStateID);
-        auto lfoCurvesState = getOrCreateStateChild(apvts.state, lfoCurvesStateID);
-        
-        modulationManager.initialise(modMatrixState, &undoManager);
-        lfoCurveState.initialise(lfoCurvesState, &undoManager);
-    }
+        applyStateTree (juce::ValueTree::fromXml (*xmlState));
 }
 
 //==============================================================================
@@ -478,6 +505,23 @@ void AudioPluginAudioProcessor::updateLFOs()
         
         int tempoDivIndex = getChoiceParam(lfoPrefix + "sync_rate");
         lfos[i].setTempoDivision(tempoDivIndex);
+    }
+}
+
+void AudioPluginAudioProcessor::rebuildLFOTablesFromState()
+{
+    for (size_t i = 0; i < 4; ++i)
+    {
+        auto points = lfoCurveState.getCurvePoints(i);
+        if (points.empty())
+            points = CurveEditor::defaultControlPoints();
+
+        const float tension = getFloatParam("lfo" + juce::String(i + 1) + "_tension");
+
+        lfos[i].syncFromCurve([&points, tension](float x)
+        {
+            return CurveEditor::evaluate(points, tension, x);
+        });
     }
 }
 

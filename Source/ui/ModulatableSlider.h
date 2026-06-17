@@ -16,12 +16,24 @@ public:
     {
         setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        restoreAssignment();
-        
+        refreshAssignment();
+
         onValueChange = [this]() { updateModulationRangeFromSlider(); };
     }
-    
+
     const juce::String& getParameterID() const { return parameterID; }
+
+    // Re-reads this parameter's modulation assignment from the manager and updates the
+    // badge/arc — including clearing it when the (e.g. newly loaded) preset has none.
+    // Called on construction and after a preset load.
+    void refreshAssignment()
+    {
+        auto assignment = processor.getModulationManager().getAssignment(parameterID);
+        if (assignment.isAssigned())
+            setAssignedSource(assignment.isLFO(), assignment.sourceIndex);
+        else
+            setAssignedSource(true, -1);
+    }
     
     void visibilityChanged() override
     {
@@ -247,15 +259,6 @@ private:
         repaint();
         DBG("Modulation assignment cleared from parameter: " << parameterID);
     }
-    
-    void restoreAssignment()
-    {
-        auto assignment = processor.getModulationManager().getAssignment(parameterID);
-        if (assignment.isAssigned())
-        {
-            setAssignedSource(assignment.isLFO(), assignment.sourceIndex);
-        }
-    }
-    
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(ModulatableSlider)
 };
