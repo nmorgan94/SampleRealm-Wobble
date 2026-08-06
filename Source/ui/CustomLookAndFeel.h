@@ -121,18 +121,20 @@ public:
                           bool /*isSeparator*/, bool isActive, bool isHighlighted, bool /*isTicked*/,
                           bool /*hasSubMenu*/, const juce::String& text,
                           const juce::String& /*shortcutKeyText*/,
-                          const juce::Drawable* /*icon*/, const juce::Colour* /*textColour*/) override
+                          const juce::Drawable* /*icon*/, const juce::Colour* textColour) override
     {
-        auto textColour = juce::Colours::white;
-        
+        // Items added via addColouredItem carry their own colour; the rest default to white.
+        const bool hasOwnColour = textColour != nullptr && ! textColour->isTransparent();
+        auto colour = hasOwnColour ? *textColour : juce::Colours::white;
+
         if (isHighlighted && isActive)
         {
             g.setColour(juce::Colour(0xff00ff41).withAlpha(0.2f));
             g.fillRect(area);
-            textColour = juce::Colour(0xff00ff41);
+            colour = hasOwnColour ? colour.brighter(0.4f) : juce::Colour(0xff00ff41);
         }
-        
-        g.setColour(textColour);
+
+        g.setColour(colour);
         g.setFont(orbitronRegular().withHeight(14.0f));
         
         auto r = area.reduced(10, 0);

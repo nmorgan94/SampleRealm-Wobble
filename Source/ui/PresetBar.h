@@ -39,17 +39,23 @@ private:
         PresetIdBase = 100
     };
 
+    static inline const juce::Colour actionColour { 0xff00ff41 };
+    static inline const juce::Colour deleteColour { 0xffff3b30 };
+
     void refreshList()
     {
         selector.clear(juce::dontSendNotification);
 
-        selector.addItem("Init",        ItemInit);
-        selector.addItem("Save",        ItemSave);
-        selector.addItem("Save As...",  ItemSaveAs);
+        // ComboBox::addItem can't carry a colour, so the action rows go via the root menu.
+        auto* menu = selector.getRootMenu();
+
+        selector.addItem("Init", ItemInit);
+        menu->addColouredItem(ItemSave,   "Save",       actionColour);
+        menu->addColouredItem(ItemSaveAs, "Save As...", actionColour);
 
         const auto current = presetManager.getCurrentPreset();
         if (current.isNotEmpty())
-            selector.addItem("Delete \"" + current + "\"", ItemDelete);
+            menu->addColouredItem(ItemDelete, "Delete \"" + current + "\"", deleteColour);
 
         selector.addSeparator();
 
