@@ -400,8 +400,19 @@ void AudioPluginAudioProcessor::resetToDefaultState()
 
     getOrCreateStateChild(apvts.state, modMatrixStateID).removeAllChildren (nullptr);
     getOrCreateStateChild(apvts.state, lfoCurvesStateID).removeAllChildren (nullptr);
+    setCurrentPresetName ({});
 
     reinitialiseStateManagers();
+}
+
+juce::String AudioPluginAudioProcessor::getCurrentPresetName() const
+{
+    return apvts.state.getProperty (presetNameID).toString();
+}
+
+void AudioPluginAudioProcessor::setCurrentPresetName(const juce::String& name)
+{
+    apvts.state.setProperty (presetNameID, name, nullptr);
 }
 
 void AudioPluginAudioProcessor::getStateInformation (juce::MemoryBlock& destData)

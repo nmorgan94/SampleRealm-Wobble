@@ -65,6 +65,8 @@ public:
     // Resets all parameters to their defaults and clears modulation routing / LFO curves.
     // Backs the "Init" preset.
     void resetToDefaultState();
+    juce::String getCurrentPresetName() const;
+    void setCurrentPresetName(const juce::String& name);
 
     //==============================================================================
     bool getBoolParam(const juce::String& paramID) const;

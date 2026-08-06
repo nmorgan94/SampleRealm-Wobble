@@ -46,7 +46,7 @@ public:
         {
             if (xml->writeTo(presetFile(name)))
             {
-                currentPreset = name;
+                processor.setCurrentPresetName(name);
                 return true;
             }
         }
@@ -64,7 +64,7 @@ public:
         {
             if (processor.applyStateTree(juce::ValueTree::fromXml(*xml)))
             {
-                currentPreset = name;
+                processor.setCurrentPresetName(name);
                 return true;
             }
         }
@@ -81,8 +81,8 @@ public:
             return false;
 
         const bool deleted = file.moveToTrash();
-        if (deleted && name == currentPreset)
-            currentPreset = {};
+        if (deleted && name == getCurrentPreset())
+            processor.setCurrentPresetName({});
 
         return deleted;
     }
@@ -90,10 +90,9 @@ public:
     void loadInit()
     {
         processor.resetToDefaultState();
-        currentPreset = {};
     }
 
-    const juce::String& getCurrentPreset() const { return currentPreset; }
+    juce::String getCurrentPreset() const { return processor.getCurrentPresetName(); }
 
 private:
     juce::File presetFile(const juce::String& name) const
@@ -102,7 +101,6 @@ private:
     }
 
     AudioPluginAudioProcessor& processor;
-    juce::String currentPreset;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(PresetManager)
 };
