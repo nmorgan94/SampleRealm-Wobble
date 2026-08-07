@@ -49,6 +49,7 @@ public:
         coarsePitchLabel.setJustificationType(juce::Justification::centred);
         addAndMakeVisible(coarsePitchLabel);
 
+        coarsePitchSlider.attachLabel(coarsePitchLabel);
         addAndMakeVisible(coarsePitchSlider);
 
         coarsePitchAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -58,6 +59,7 @@ public:
         glideLabel.setJustificationType(juce::Justification::centred);
         addAndMakeVisible(glideLabel);
 
+        glideSlider.attachLabel(glideLabel);
         addAndMakeVisible(glideSlider);
 
         glideAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(

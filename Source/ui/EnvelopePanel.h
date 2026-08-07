@@ -5,6 +5,7 @@
 #include "EnvelopeEditor.h"
 #include "CustomLFOTabButton.h"
 #include "CustomLookAndFeel.h"
+#include "ValueLabelSlider.h"
 
 class AudioPluginAudioProcessor;
 
@@ -87,7 +88,7 @@ public:
     }
 
 private:
-    void setupSlider(juce::Slider& slider, juce::Label& label,
+    void setupSlider(ValueLabelSlider& slider, juce::Label& label,
                      const juce::String& labelText, const juce::String& paramID)
     {
         slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
@@ -106,6 +107,8 @@ private:
         label.setJustificationType(juce::Justification::centred);
         label.setColour(juce::Label::textColourId, juce::Colour(0xff00ff41));
         addAndMakeVisible(label);
+
+        slider.attachLabel(label);
     }
     
     void updateEnvelopeDisplay()
@@ -122,7 +125,7 @@ private:
     
     std::unique_ptr<EnvelopeEditor> envelopeEditor;
     
-    juce::Slider attackSlider, decaySlider, sustainSlider, releaseSlider;
+    ValueLabelSlider attackSlider, decaySlider, sustainSlider, releaseSlider;
     juce::Label attackLabel, decayLabel, sustainLabel, releaseLabel;
     
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> sliderAttachments;

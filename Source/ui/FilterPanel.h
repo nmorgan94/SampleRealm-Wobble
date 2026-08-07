@@ -137,7 +137,7 @@ public:
     }
     
 private:
-    void setupKnob(juce::Label& label, juce::Slider& slider, const juce::String& text)
+    void setupKnob(juce::Label& label, ValueLabelSlider& slider, const juce::String& text)
     {
         label.setText(text, juce::dontSendNotification);
         label.setJustificationType(juce::Justification::centred);
@@ -145,6 +145,7 @@ private:
 
         slider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
+        slider.attachLabel(label);
         addAndMakeVisible(slider);
     }
 

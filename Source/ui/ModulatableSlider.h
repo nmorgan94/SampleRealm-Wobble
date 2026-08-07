@@ -2,11 +2,12 @@
 
 #include <juce_gui_basics/juce_gui_basics.h>
 #include <juce_audio_processors/juce_audio_processors.h>
+#include "ValueLabelSlider.h"
 
 // Forward declaration
 class AudioPluginAudioProcessor;
 
-class ModulatableSlider : public juce::Slider,
+class ModulatableSlider : public ValueLabelSlider,
                           public juce::DragAndDropTarget,
                           private juce::Timer
 {

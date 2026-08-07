@@ -45,7 +45,7 @@ public:
 
             // Draw text
             g.setColour(button.getToggleState() ? neonGreen : juce::Colour(0xff666666));
-            g.setFont(orbitronBold().withHeight(10.0f));
+            g.setFont(orbitronRegular().withHeight(10.0f));
             g.drawText(button.getButtonText(), bounds, juce::Justification::centred);
 
             return;
@@ -141,6 +141,13 @@ public:
         g.drawFittedText(text, r, juce::Justification::centredLeft, 1);
     }
     
+    juce::Font getLabelFont(juce::Label& label) override
+    {
+        const auto existing = label.getFont();
+        const auto options  = existing.isBold() ? orbitronBold() : orbitronRegular();
+        return options.withHeight(existing.getHeight());
+    }
+
     juce::Font getComboBoxFont(juce::ComboBox&) override
     {
         return orbitronRegular().withHeight(14.0f);

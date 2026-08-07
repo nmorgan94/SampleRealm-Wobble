@@ -193,10 +193,11 @@ private:
     {
         juce::String paramID = "lfo" + juce::String(lfoIndex + 1) + "_tension";
         
-        auto slider = std::make_unique<juce::Slider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
+        auto slider = std::make_unique<ValueLabelSlider>(juce::Slider::RotaryHorizontalVerticalDrag, juce::Slider::NoTextBox);
         container->addAndMakeVisible(slider.get());
         tensionSliders.push_back(std::move(slider));
         tensionLabels.push_back(createLabel("Tension", container));
+        tensionSliders.back()->attachLabel(*tensionLabels.back());
         
         tensionSliders.back()->onValueChange = [this, lfoIndex]()
         {
@@ -220,6 +221,7 @@ private:
         container->addAndMakeVisible(slider.get());
         sliders.push_back(std::move(slider));
         labels.push_back(createLabel(labelText, container));
+        sliders.back()->attachLabel(*labels.back());
         attachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
             processor.apvts, paramID, *sliders.back()));
     }
@@ -272,7 +274,7 @@ private:
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> rateAttachments;
     std::vector<std::unique_ptr<juce::ToggleButton>> syncButtons;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment>> syncAttachments;
-    std::vector<std::unique_ptr<juce::Slider>> tensionSliders;
+    std::vector<std::unique_ptr<ValueLabelSlider>> tensionSliders;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment>> tensionAttachments;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(LFOPanel)
