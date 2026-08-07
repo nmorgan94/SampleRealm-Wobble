@@ -23,6 +23,12 @@ public:
 
     const juce::String& getParameterID() const { return parameterID; }
 
+    void setParameterID(const juce::String& newParameterID)
+    {
+        parameterID = newParameterID;
+        refreshAssignment();
+    }
+
     // Re-reads this parameter's modulation assignment from the manager and updates the
     // badge/arc — including clearing it when the (e.g. newly loaded) preset has none.
     // Called on construction and after a preset load.
@@ -160,9 +166,9 @@ private:
             repaint();
     }
     
-    juce::AudioParameterFloat* getParameter()
+    juce::RangedAudioParameter* getParameter()
     {
-        return dynamic_cast<juce::AudioParameterFloat*>(processor.getAPVTS().getParameter(parameterID));
+        return dynamic_cast<juce::RangedAudioParameter*>(processor.getAPVTS().getParameter(parameterID));
     }
     
     void updateModulationRangeFromSlider()

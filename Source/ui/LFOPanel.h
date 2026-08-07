@@ -101,9 +101,9 @@ public:
         }
     }
     
-    // Re-reads every LFO's saved curve + tension after a preset load and re-syncs the
-    // audio LFOs. The APVTS-attached controls (mode/rate/sync/tension knobs) refresh
-    // themselves via their attachments; only the drawn curves need this manual reload.
+    // Re-reads every LFO's saved curve + tension and re-syncs the audio LFOs. Also re-binds the
+    // rate knob: the SYNC button's onClick can't do it on construction or a preset load, since a
+    // ButtonAttachment only notifies when the toggle state actually changes.
     void reloadFromState()
     {
         for (size_t i = 0; i < 4; ++i)
@@ -118,6 +118,7 @@ public:
                 curveEditors[i]->setTension(param->getValue());
 
             syncCurveToLFO(curveEditors[i].get(), i);
+            updateLFORateControl(i);
         }
     }
 
@@ -255,6 +256,7 @@ private:
             paramID = "lfo" + juce::String(lfoIndex + 1) + "_rate";
         }
         
+        rateSliders[lfoIndex]->setParameterID(paramID);
         rateAttachments[lfoIndex] = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
             processor.apvts, paramID, *rateSliders[lfoIndex]);
     }

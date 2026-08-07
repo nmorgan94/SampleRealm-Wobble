@@ -59,6 +59,8 @@ public:
             apvts, "drive_hq", hqButton);
 
         addAndMakeVisible(responseDisplay);
+
+        updateEnabledAppearance();
     }
     
     ~FilterPanel() override
@@ -154,6 +156,11 @@ private:
     }
 
     void buttonClicked(juce::Button*) override
+    {
+        updateEnabledAppearance();
+    }
+
+    void updateEnabledAppearance()
     {
         bool isEnabled = enableButton.getToggleState();
         float alpha = isEnabled ? 1.0f : 0.3f;
