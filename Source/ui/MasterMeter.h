@@ -82,7 +82,6 @@ public:
     {
         gainSlider.setSliderStyle(juce::Slider::RotaryHorizontalVerticalDrag);
         gainSlider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-        gainSlider.setDoubleClickReturnValue(true, 0.0);
         addAndMakeVisible(gainSlider);
 
         addAndMakeVisible(meter);
