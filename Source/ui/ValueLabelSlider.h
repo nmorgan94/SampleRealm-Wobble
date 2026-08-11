@@ -7,9 +7,15 @@ class ValueLabelSlider : public juce::Slider
 public:
     using juce::Slider::Slider;
 
-    void attachLabel(juce::Label& label) { valueLabel = &label; }
+    void attachLabel(juce::Label& label)
+    {
+        valueLabel = &label;
+        updatePopupState();
+    }
 
 protected:
+    void parentHierarchyChanged() override { updatePopupState(); }
+
     void startedDragging() override
     {
         dragging = true;
@@ -38,6 +44,11 @@ protected:
     }
 
 private:
+    void updatePopupState()
+    {
+        setPopupDisplayEnabled(valueLabel == nullptr, false, getTopLevelComponent());
+    }
+
     void showValue()
     {
         valueLabel->setText(getTextFromValue(getValue()), juce::dontSendNotification);

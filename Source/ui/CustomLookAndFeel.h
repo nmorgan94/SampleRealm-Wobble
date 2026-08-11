@@ -11,6 +11,10 @@ public:
         setColour(juce::Slider::rotarySliderFillColourId, juce::Colour(0xff00ff41));
         setColour(juce::Slider::rotarySliderOutlineColourId, juce::Colour(0xff2a2a2a));
         setColour(juce::Slider::thumbColourId, juce::Colour(0xff00ff41));
+
+        setColour(juce::BubbleComponent::backgroundColourId, juce::Colour(0xff2a2a2a));
+        setColour(juce::BubbleComponent::outlineColourId, juce::Colour(0xff00ff41));
+        setColour(juce::TooltipWindow::textColourId, juce::Colour(0xff00ff41));
     }
 
     [[nodiscard]] static juce::FontOptions orbitronRegular()
@@ -151,6 +155,11 @@ public:
     juce::Font getComboBoxFont(juce::ComboBox&) override
     {
         return orbitronRegular().withHeight(14.0f);
+    }
+
+    juce::Font getSliderPopupFont(juce::Slider&) override
+    {
+        return orbitronRegular().withHeight(12.0f);
     }
     
     juce::Label* createComboBoxTextBox(juce::ComboBox&) override

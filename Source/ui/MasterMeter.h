@@ -4,6 +4,7 @@
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "../PluginProcessor.h"
 #include "CustomLookAndFeel.h"
+#include "ValueLabelSlider.h"
 
 class OutputMeter : public juce::Component,
                     private juce::Timer
@@ -125,7 +126,7 @@ public:
     }
 
 private:
-    juce::Slider gainSlider;
+    ValueLabelSlider gainSlider;
     OutputMeter meter;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> gainAttachment;
 
