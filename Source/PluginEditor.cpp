@@ -63,7 +63,7 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour (juce::Colour(0xff00ff00));
     g.setFont (CustomLookAndFeel::orbitronBold().withHeight(24.0f));
     auto titleArea = bounds.removeFromTop(70).withTrimmedLeft(10);
-    g.drawText ("SampleRealm: Wobble", titleArea, juce::Justification::centredLeft);
+    g.drawText ("SampleRealm: Modulate", titleArea, juce::Justification::centredLeft);
 }
 
 void AudioPluginAudioProcessorEditor::resized()

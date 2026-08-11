@@ -4,7 +4,7 @@ set(CMAKE_OSX_DEPLOYMENT_TARGET "10.13" CACHE STRING "" FORCE)
 set(CMAKE_OSX_ARCHITECTURES "x86_64;arm64" CACHE STRING "" FORCE)
 
 # Change to your project name
-project(Wobble)
+project(Modulate)
 
 
 set(CMAKE_CXX_STANDARD 23)
@@ -51,7 +51,7 @@ juce_add_plugin(${PROJECT_NAME}
         PLUGIN_MANUFACTURER_CODE
           Sprm
         PLUGIN_CODE
-          Wbbl
+          Mdlt
         VERSION 
           0.0.0
         FORMATS

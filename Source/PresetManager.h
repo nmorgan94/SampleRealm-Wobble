@@ -4,12 +4,12 @@
 
 // Handles user preset files on disk. State (de)serialization itself is delegated to the
 // processor's shared getStateTree()/applyStateTree() helpers, so a preset file is exactly
-// the same XML the DAW embeds for project state — just stored as a .wobble file.
+// the same XML the DAW embeds for project state — just stored as a .modulate file.
 class PresetManager
 {
 public:
-    static inline const juce::String fileExtension { ".wobble" };
-    static inline const juce::String fileWildcard  { "*.wobble" };
+    static inline const juce::String fileExtension { ".modulate" };
+    static inline const juce::String fileWildcard  { "*.modulate" };
 
     explicit PresetManager(AudioPluginAudioProcessor& proc) : processor(proc)
     {
@@ -18,12 +18,12 @@ public:
             dir.createDirectory();
     }
 
-    // ~/Library/Application Support/SampleRealm/Wobble/Presets (per the user app data dir).
+
     static juce::File presetDirectory()
     {
         return juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory)
                    .getChildFile("SampleRealm")
-                   .getChildFile("Wobble")
+                   .getChildFile("Modulate")
                    .getChildFile("Presets");
     }
 
