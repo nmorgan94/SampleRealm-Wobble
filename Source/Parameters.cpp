@@ -42,7 +42,11 @@ namespace Parameters
             
             params.push_back(std::make_unique<juce::AudioParameterInt>(
                 juce::ParameterID{oscPrefix + "_pitch", versionHint},
-                oscName + " Pitch", -24, 24, 0));
+                oscName + " Pitch", -36, 36, 0));
+
+            params.push_back(std::make_unique<juce::AudioParameterInt>(
+                juce::ParameterID{oscPrefix + "_fine", versionHint},
+                oscName + " Fine", -99, 99, 0));
         }
         
         auto syncRates = juce::StringArray {

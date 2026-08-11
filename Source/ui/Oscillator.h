@@ -22,6 +22,7 @@ public:
                const juce::String& morphParamID,
                const juce::String& gainParamID,
                const juce::String& pitchParamID,
+               const juce::String& fineParamID,
                const juce::String& labelText)
         : processorRef(proc),
           apvtsRef(apvts),
@@ -56,6 +57,10 @@ public:
 
         addAndMakeVisible(semitoneDisplay);
         semitoneDisplay.attachToParameter(proc, apvts, pitchParamID);
+
+        fineDisplay.setLabel("FIN");
+        addAndMakeVisible(fineDisplay);
+        fineDisplay.attachToParameter(proc, apvts, fineParamID);
 
         enableAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ButtonAttachment>(
             apvts, enableParamID, enableButton);
@@ -102,6 +107,8 @@ public:
         morphSlider.setEnabled(isEnabled);
         semitoneDisplay.setAlpha(alpha);
         semitoneDisplay.setEnabled(isEnabled);
+        fineDisplay.setAlpha(alpha);
+        fineDisplay.setEnabled(isEnabled);
         
         // Draw background
         g.setColour(juce::Colour(0xff1a1a1a));
@@ -131,7 +138,7 @@ public:
         
         controlBar.removeFromLeft(3);
         
-        auto labelWidth = 50;
+        auto labelWidth = 68;
         titleLabel.setBounds(controlBar.removeFromLeft(labelWidth));
         
         controlBar.removeFromLeft(3);
@@ -148,8 +155,11 @@ public:
         auto morphRow = bounds.removeFromTop(30);
 
         auto gutter = morphRow.removeFromLeft(30 + 3 + labelWidth + 3);
-        auto pitchWidth = 60;
+        auto pitchWidth = 46;
         semitoneDisplay.setBounds(gutter.removeFromLeft(pitchWidth).withSizeKeepingCentre(pitchWidth, 20));
+        gutter.removeFromLeft(6);
+        auto fineWidth = 46;
+        fineDisplay.setBounds(gutter.removeFromLeft(fineWidth).withSizeKeepingCentre(fineWidth, 20));
 
         auto morphSelectorWidth = morphRow.getWidth() - knobSize - 5;
         waveformSelectorB.setBounds(morphRow.removeFromLeft(morphSelectorWidth));
@@ -249,6 +259,7 @@ private:
     ModulatableSlider gainSlider;
     ModulatableSlider morphSlider;
     StepperDisplay semitoneDisplay;
+    StepperDisplay fineDisplay;
 
     juce::AudioBuffer<float> displaySourceA;
     juce::AudioBuffer<float> displaySourceB;

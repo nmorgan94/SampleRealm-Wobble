@@ -151,7 +151,11 @@ public:
         parameterID = paramID;
 
         if (auto* param = dynamic_cast<juce::AudioParameterInt*>(apvts.getParameter(paramID)))
+        {
+            const auto range = param->getNormalisableRange();
+            setRange(juce::roundToInt(range.start), juce::roundToInt(range.end));
             setValue(param->get());
+        }
 
         onValueChange = [this, &apvts, paramID](int newValue)
         {

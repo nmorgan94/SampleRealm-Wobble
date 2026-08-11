@@ -170,6 +170,7 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
     static const juce::String enableIDs[3] = { "osc1_enable", "osc2_enable", "osc3_enable" };
     static const juce::String gainIDs[3]   = { "osc1_gain",   "osc2_gain",   "osc3_gain"   };
     static const juce::String pitchIDs[3]  = { "osc1_pitch",  "osc2_pitch",  "osc3_pitch"  };
+    static const juce::String fineIDs[3]   = { "osc1_fine",   "osc2_fine",   "osc3_fine"   };
 
     const float  coarseSemis = owner.getModulatedParam("coarse_pitch");
     const double coarseRatio = std::pow(2.0, coarseSemis / 12.0);
@@ -181,7 +182,8 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
         oscData[osc]    = wavetables[osc].getReadPointer(0); // cached pointer, hoisted out of the sample loop
 
         const int    pitchOffset   = juce::roundToInt(owner.getModulatedParam(pitchIDs[osc]));
-        const double oscFrequency  = juce::MidiMessage::getMidiNoteInHertz(currentMidiNote + pitchOffset) * currentGlideRatio * coarseRatio;
+        const double fineRatio     = std::pow(2.0, owner.getModulatedParam(fineIDs[osc]) / 1200.0);
+        const double oscFrequency  = juce::MidiMessage::getMidiNoteInHertz(currentMidiNote + pitchOffset) * currentGlideRatio * coarseRatio * fineRatio;
         const double baseIncrement = oscFrequency * wavetableSize / getSampleRate();
 
         for (int u = 0; u < unisonCount; ++u)
