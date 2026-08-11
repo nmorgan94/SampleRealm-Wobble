@@ -7,14 +7,23 @@
 class FilterResponseDisplay : public BaseCurveDisplay
 {
 public:
-    FilterResponseDisplay() : BaseCurveDisplay(false) {}
-    
-    void setFilterParameters(FilterMode mode, float cutoffHz, float resonance, double sr)
+    FilterResponseDisplay() : BaseCurveDisplay(false)
     {
-        filterMode = mode;
-        cutoffFrequency = cutoffHz;
-        qFactor = 0.5f + resonance * 19.5f;
-        sampleRate = sr;
+        responseFilter.prepare({ sampleRate, 512, 2 });
+    }
+    
+    void setFilterParameters(FilterMode mode, FilterSlope slope, float cutoffHz, float resonance, double sr)
+    {
+        if (sr <= 0.0)
+            return;
+
+        if (! juce::approximatelyEqual(sr, sampleRate))
+        {
+            sampleRate = sr;
+            responseFilter.prepare({ sampleRate, 512, 2 });
+        }
+
+        responseFilter.setParameters(mode, slope, cutoffHz, resonance);
         repaint();
     }
     
@@ -86,33 +95,13 @@ protected:
     }
 
 private:
-    FilterMode filterMode = FilterMode::Lowpass;
-    float cutoffFrequency = 1000.0f;
-    float qFactor = 0.707f;
+    Filter responseFilter;
     double sampleRate = 44100.0;
     bool isEnabled = true;
-    
+
     float calculateMagnitudeResponse(float frequency) const
     {
-        if (frequency <= 0.0f || cutoffFrequency <= 0.0f)
-            return 1.0f;
-        
-        float ratio = frequency / cutoffFrequency;
-        float ratio2 = ratio * ratio;
-        
-        // Common denominator for all filter types
-        float term1 = 1.0f - ratio2;
-        float term2 = ratio / qFactor;
-        float denom = juce::jmax(std::sqrt(term1 * term1 + term2 * term2), 0.001f);
-        
-        switch (filterMode)
-        {
-            case FilterMode::Lowpass:   return 1.0f / denom;
-            case FilterMode::Highpass:  return ratio2 / denom;
-            case FilterMode::Bandpass:  return (ratio / qFactor) / denom;
-            case FilterMode::Notch:     return std::abs(term1) / denom;
-            default:                    return 1.0f;
-        }
+        return frequency > 0.0f ? responseFilter.getMagnitudeAt(frequency) : 1.0f;
     }
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(FilterResponseDisplay)

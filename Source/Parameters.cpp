@@ -104,7 +104,11 @@ namespace Parameters
         params.push_back(std::make_unique<juce::AudioParameterChoice>(
             juce::ParameterID{"filter_mode", versionHint}, "Filter Mode",
             juce::StringArray { "Lowpass", "Highpass", "Bandpass", "Notch" }, 0));
-        
+
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"filter_slope", versionHint}, "Filter Slope",
+            juce::StringArray { "12 dB", "24 dB" }, 0));
+
         params.push_back(std::make_unique<juce::AudioParameterFloat>(
             juce::ParameterID{"filter_cutoff", versionHint}, "Filter Cutoff",
             juce::NormalisableRange<float>(20.0f, 20000.0f, 1.0f, 0.3f), 1000.0f));

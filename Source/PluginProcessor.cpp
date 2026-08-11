@@ -538,14 +538,10 @@ void AudioPluginAudioProcessor::rebuildLFOTablesFromState()
 
 void AudioPluginAudioProcessor::updateFilter()
 {
-    int modeIndex = getChoiceParam("filter_mode");
-    filter.setMode(static_cast<FilterMode>(modeIndex));
-    
-    float cutoffHz = getModulatedParam("filter_cutoff");
-    filter.setCutoff(cutoffHz);
-    
-    float resonance = getModulatedParam("filter_resonance");
-    filter.setResonance(resonance);
+    filter.setParameters(static_cast<FilterMode>(getChoiceParam("filter_mode")),
+                         static_cast<FilterSlope>(getChoiceParam("filter_slope")),
+                         getModulatedParam("filter_cutoff"),
+                         getModulatedParam("filter_resonance"));
 }
 
 void AudioPluginAudioProcessor::updateVoiceCount()

@@ -9,6 +9,7 @@ class AudioPluginAudioProcessor;
 
 class FilterPanel : public juce::Component,
                     private juce::Button::Listener,
+                    private juce::ComboBox::Listener,
                     private juce::Timer
 {
 public:
@@ -35,8 +36,13 @@ public:
         modeSelector.addItem("Highpass", 2);
         modeSelector.addItem("Bandpass", 3);
         modeSelector.addItem("Notch", 4);
+        modeSelector.addListener(this);
         addAndMakeVisible(modeSelector);
-        
+
+        slopeSelector.addItem("12 dB", 1);
+        slopeSelector.addItem("24 dB", 2);
+        addAndMakeVisible(slopeSelector);
+
         setupKnob(cutoffLabel, cutoffSlider, "Cutoff");
         setupKnob(resonanceLabel, resonanceSlider, "Resonance");
         setupKnob(driveLabel, driveSlider, "Drive");
@@ -49,6 +55,8 @@ public:
             apvts, "filter_enable", enableButton);
         modeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
             apvts, "filter_mode", modeSelector);
+        slopeAttachment = std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
+            apvts, "filter_slope", slopeSelector);
         cutoffAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
             apvts, "filter_cutoff", cutoffSlider);
         resonanceAttachment = std::make_unique<juce::AudioProcessorValueTreeState::SliderAttachment>(
@@ -67,6 +75,7 @@ public:
     {
         stopTimer();
         enableButton.removeListener(this);
+        modeSelector.removeListener(this);
     }
     
     void visibilityChanged() override
@@ -79,14 +88,19 @@ public:
     
     void timerCallback() override
     {
-        // Update filter response display with modulated values
-        bool isEnabled = processor.getBoolParam("filter_enable");
+        updateResponseDisplay();
+    }
+
+    void updateResponseDisplay()
+    {
+        bool isEnabled = enableButton.getToggleState();
         auto mode = static_cast<FilterMode>(processor.getChoiceParam("filter_mode"));
+        auto slope = static_cast<FilterSlope>(processor.getChoiceParam("filter_slope"));
         float cutoff = processor.getModulatedParam("filter_cutoff");
         float resonance = processor.getModulatedParam("filter_resonance");
-        
+
         responseDisplay.setEnabled(isEnabled);
-        responseDisplay.setFilterParameters(mode, cutoff, resonance, processor.getSampleRate());
+        responseDisplay.setFilterParameters(mode, slope, cutoff, resonance, processor.getSampleRate());
     }
     
     void paint(juce::Graphics& g) override
@@ -114,8 +128,10 @@ public:
         bounds.removeFromTop(5);
         
         auto modeRow = bounds.removeFromTop(25);
-        modeLabel.setBounds(modeRow.removeFromLeft(60));
-        modeSelector.setBounds(modeRow.removeFromLeft(150));
+        modeLabel.setBounds(modeRow.removeFromLeft(50));
+        modeSelector.setBounds(modeRow.removeFromLeft(110));
+        modeRow.removeFromLeft(5);
+        slopeSelector.setBounds(modeRow.removeFromLeft(75));
         
         bounds.removeFromTop(10);
         
@@ -161,6 +177,21 @@ private:
         updateEnabledAppearance();
     }
 
+    void comboBoxChanged(juce::ComboBox*) override
+    {
+        updateSlopeAvailability();
+    }
+
+    // A notch has no skirt to steepen, so the slope control goes dead in that mode.
+    void updateSlopeAvailability()
+    {
+        const auto mode = static_cast<FilterMode>(modeSelector.getSelectedItemIndex());
+        const bool usable = enableButton.getToggleState() && FilterStages::hasSlope(mode);
+
+        slopeSelector.setAlpha(usable ? 1.0f : 0.3f);
+        slopeSelector.setEnabled(usable);
+    }
+
     void updateEnabledAppearance()
     {
         bool isEnabled = enableButton.getToggleState();
@@ -170,7 +201,9 @@ private:
         modeLabel.setAlpha(alpha);
         modeSelector.setAlpha(alpha);
         modeSelector.setEnabled(isEnabled);
-        
+
+        updateSlopeAvailability();
+
         cutoffLabel.setAlpha(alpha);
         cutoffSlider.setAlpha(alpha);
         cutoffSlider.setEnabled(isEnabled);
@@ -185,8 +218,8 @@ private:
         hqButton.setAlpha(alpha);
         hqButton.setEnabled(isEnabled);
 
-        responseDisplay.setEnabled(isEnabled);
-        
+        updateResponseDisplay();
+
         if (isEnabled && isVisible())
             startTimerHz(30);
         else
@@ -202,7 +235,8 @@ private:
     
     juce::Label modeLabel;
     juce::ComboBox modeSelector;
-    
+    juce::ComboBox slopeSelector;
+
     juce::Label driveLabel;
     ModulatableSlider driveSlider;
     juce::ToggleButton hqButton;
@@ -217,6 +251,7 @@ private:
     
     std::unique_ptr<juce::AudioProcessorValueTreeState::ButtonAttachment> enableAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> modeAttachment;
+    std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment> slopeAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> cutoffAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> resonanceAttachment;
     std::unique_ptr<juce::AudioProcessorValueTreeState::SliderAttachment> driveAttachment;
