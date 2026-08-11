@@ -46,10 +46,30 @@ public:
             
             auto modeLabel = std::make_unique<juce::Label>();
             modeLabel->setText("Mode", juce::dontSendNotification);
-            modeLabel->setJustificationType(juce::Justification::centred);
+            modeLabel->setJustificationType(juce::Justification::centredLeft);
             modeLabel->setColour(juce::Label::textColourId, juce::Colour(0xff00ff41));
             container->addAndMakeVisible(modeLabel.get());
             modeLabels.push_back(std::move(modeLabel));
+
+            auto shapeBox = std::make_unique<juce::ComboBox>();
+            shapeBox->setTextWhenNothingSelected("Shape");
+            for (size_t s = 0; s < CurveEditor::shapes().size(); ++s)
+                shapeBox->addItem(CurveEditor::shapes()[s].name, static_cast<int>(s) + 1);
+            container->addAndMakeVisible(shapeBox.get());
+            shapeComboBoxes.push_back(std::move(shapeBox));
+
+            shapeComboBoxes.back()->onChange = [this, i]()
+            {
+                const int selectedId = shapeComboBoxes[i]->getSelectedId();
+                if (selectedId <= 0)
+                    return;
+
+                applyShape(i, selectedId - 1);
+
+                // Behave like a menu: the curve stays editable, so don't leave a name showing
+                // that the drawn curve may no longer match.
+                shapeComboBoxes[i]->setSelectedId(0, juce::dontSendNotification);
+            };
             
             juce::String modeParamID = "lfo" + juce::String(i + 1) + "_mode";
             modeAttachments.push_back(std::make_unique<juce::AudioProcessorValueTreeState::ComboBoxAttachment>(
@@ -167,8 +187,13 @@ public:
             auto controlsArea = bounds;
             
             auto modeArea = controlsArea.removeFromLeft(controlsArea.getWidth() / 2).reduced(5);
-            modeLabels[i]->setBounds(modeArea.removeFromTop(16));
-            modeComboBoxes[i]->setBounds(modeArea.removeFromTop(24));
+
+            shapeComboBoxes[i]->setBounds(modeArea.removeFromTop(20));
+            modeArea.removeFromTop(4);
+
+            auto modeRow = modeArea.removeFromTop(20);
+            modeLabels[i]->setBounds(modeRow.removeFromLeft(38));
+            modeComboBoxes[i]->setBounds(modeRow);
             
             int knobSize = 50;
             int knobX = controlsArea.getX() + 10;
@@ -235,7 +260,24 @@ private:
         container->addAndMakeVisible(label.get());
         return label;
     }
-    
+
+    void applyShape(size_t lfoIndex, int shapeIndex)
+    {
+        const auto& shapes = CurveEditor::shapes();
+        if (shapeIndex < 0 || shapeIndex >= static_cast<int>(shapes.size()))
+            return;
+
+        const auto& shape = shapes[static_cast<size_t>(shapeIndex)];
+
+        juce::String tensionParamID = "lfo" + juce::String(lfoIndex + 1) + "_tension";
+        if (auto* param = processor.apvts.getParameter(tensionParamID))
+            param->setValueNotifyingHost(param->convertTo0to1(shape.tension));
+
+        curveEditors[lfoIndex]->setControlPoints(shape.points);
+        processor.setLFOCurvePoints(lfoIndex, shape.points);
+        syncCurveToLFO(curveEditors[lfoIndex].get(), lfoIndex);
+    }
+
     void syncCurveToLFO(CurveEditor* editor, size_t lfoIndex)
     {
         auto curveFunction = [editor](float x) { return editor->getValueAt(x); };
@@ -268,6 +310,7 @@ private:
     std::vector<std::unique_ptr<juce::Component>> tabContainers;
     std::vector<std::unique_ptr<CurveEditor>> curveEditors;
     std::vector<std::unique_ptr<juce::ComboBox>> modeComboBoxes;
+    std::vector<std::unique_ptr<juce::ComboBox>> shapeComboBoxes;
     std::vector<std::unique_ptr<juce::Label>> modeLabels, rateLabels, tensionLabels;
     std::vector<std::unique_ptr<juce::AudioProcessorValueTreeState::ComboBoxAttachment>> modeAttachments;
     std::vector<std::unique_ptr<ModulatableSlider>> rateSliders;

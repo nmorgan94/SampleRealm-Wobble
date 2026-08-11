@@ -241,6 +241,27 @@ public:
         };
     }
 
+    struct Shape
+    {
+        const char* name;
+        std::vector<ControlPoint> points;
+        float tension;
+    };
+
+    static const std::vector<Shape>& shapes()
+    {
+        static const std::vector<Shape> table = {
+            { "Sine",      defaultControlPoints(), 0.5f },
+            { "Triangle",  defaultControlPoints(), 1.0f },
+            { "Ramp Up",   { { 0.0f, 0.0f }, { 1.0f, 1.0f } }, 1.0f },
+            { "Ramp Down", { { 0.0f, 1.0f }, { 1.0f, 0.0f } }, 1.0f },
+            { "Square",    { { 0.0f, 1.0f }, { 0.49f, 1.0f },
+                             { 0.51f, 0.0f }, { 0.99f, 0.0f }, { 1.0f, 1.0f } }, 1.0f }
+        };
+
+        return table;
+    }
+
     // UI-free evaluation of (control points + tension) at x in [0,1]. Used both for the editor's
     // own rendering and by the processor to rebuild the audio LFO lookup table from saved state.
     static float evaluate(const std::vector<ControlPoint>& points, float tension, float x)
