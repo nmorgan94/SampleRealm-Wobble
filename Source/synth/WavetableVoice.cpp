@@ -54,6 +54,8 @@ void WavetableVoice::startNote(int midiNoteNumber, float velocity,
         { "env4_attack", "env4_decay", "env4_sustain", "env4_release" },
     };
 
+    noise.reset();
+
     // Initialize and trigger envelope
     envelope.setSampleRate(getSampleRate());
 
@@ -175,6 +177,14 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
     const float  coarseSemis = owner.getModulatedParam("coarse_pitch");
     const double coarseRatio = std::pow(2.0, coarseSemis / 12.0);
 
+    static const juce::String noiseEnableID { "noise_enable" };
+    static const juce::String noiseTypeID   { "noise_type"   };
+    static const juce::String noiseLevelID  { "noise_level"  };
+
+    const bool  noiseEnabled = owner.getBoolParam(noiseEnableID);
+    const float noiseLevel   = owner.getModulatedParam(noiseLevelID);
+    const auto  noiseType    = static_cast<NoiseGenerator::Type>(owner.getChoiceParam(noiseTypeID));
+
     for (int osc = 0; osc < 3; ++osc)
     {
         oscEnabled[osc] = owner.getBoolParam(enableIDs[osc]);
@@ -219,9 +229,17 @@ void WavetableVoice::renderNextBlock(juce::AudioBuffer<float>& outputBuffer,
         }
 
         const float envelopeValue = envelope.getNextSample();
-        const float g = unisonGain * level * envelopeValue;
-        left  *= g;
-        right *= g;
+        const float voiceGain     = level * envelopeValue; 
+
+        left  *= unisonGain * voiceGain;
+        right *= unisonGain * voiceGain;
+
+        if (noiseEnabled)
+        {
+            const float n = noise.getNextSample(noiseType) * noiseLevel * voiceGain;
+            left  += n;
+            right += n;
+        }
 
         const int sampleIndex = startSample + sample;
 

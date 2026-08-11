@@ -23,6 +23,9 @@ AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAud
         "osc3_gain", "osc3_pitch", "osc3_fine", "OSC 3");
     addAndMakeVisible(osc3.get());
     
+    noisePanel = std::make_unique<NoisePanel>(processorRef, processorRef.apvts);
+    addAndMakeVisible(noisePanel.get());
+
     filterPanel = std::make_unique<FilterPanel>(processorRef, processorRef.apvts);
     addAndMakeVisible(filterPanel.get());
 
@@ -99,7 +102,10 @@ void AudioPluginAudioProcessorEditor::resized()
     
     osc3->setBounds(bounds);
     
-    int filterHeight = middleSection.getHeight() / 2;
+    noisePanel->setBounds(middleSection.removeFromTop(50));
+    middleSection.removeFromTop(10);
+
+    int filterHeight = 260;
     filterPanel->setBounds(middleSection.removeFromTop(filterHeight));
     middleSection.removeFromTop(10);
     voicePanel->setBounds(middleSection);

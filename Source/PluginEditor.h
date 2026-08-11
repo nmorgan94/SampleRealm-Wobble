@@ -5,6 +5,7 @@
 #include "ui/Oscillator.h"
 #include "ui/EnvelopePanel.h"
 #include "ui/LFOPanel.h"
+#include "ui/NoisePanel.h"
 #include "ui/FilterPanel.h"
 #include "ui/VoicePanel.h"
 #include "ui/MasterMeter.h"
@@ -32,6 +33,7 @@ private:
     std::unique_ptr<Oscillator> osc2;
     std::unique_ptr<Oscillator> osc3;
     
+    std::unique_ptr<NoisePanel> noisePanel;
     std::unique_ptr<FilterPanel> filterPanel;
     std::unique_ptr<VoicePanel> voicePanel;
     std::unique_ptr<EnvelopePanel> envelopePanel;

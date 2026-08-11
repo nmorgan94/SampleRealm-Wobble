@@ -2,6 +2,7 @@
 
 #include <juce_audio_processors/juce_audio_processors.h>
 #include "ADSREnvelope.h"
+#include "NoiseGenerator.h"
 #include "../Parameters.h"
 
 class AudioPluginAudioProcessor;
@@ -42,6 +43,7 @@ private:
     juce::SmoothedValue<double, juce::ValueSmoothingTypes::Multiplicative> glideRatio;
 
     ADSREnvelope envelope;
+    NoiseGenerator noise;
 
     bool withinVoiceLimit = true;
 

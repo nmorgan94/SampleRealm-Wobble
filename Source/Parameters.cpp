@@ -49,6 +49,17 @@ namespace Parameters
                 oscName + " Fine", -99, 99, 0));
         }
         
+        params.push_back(std::make_unique<juce::AudioParameterBool>(
+            juce::ParameterID{"noise_enable", versionHint}, "Noise Enable", false));
+
+        params.push_back(std::make_unique<juce::AudioParameterChoice>(
+            juce::ParameterID{"noise_type", versionHint}, "Noise Type",
+            juce::StringArray { "White", "Pink" }, 0));
+
+        params.push_back(std::make_unique<juce::AudioParameterFloat>(
+            juce::ParameterID{"noise_level", versionHint}, "Noise Level",
+            juce::NormalisableRange<float>(0.0f, 1.0f, 0.01f), 0.5f));
+
         auto syncRates = juce::StringArray {
             "1/16", "1/16T", "1/16D", "1/8", "1/8T", "1/8D",
             "1/4", "1/4T", "1/4D", "1/2", "1/2T", "1/2D",
