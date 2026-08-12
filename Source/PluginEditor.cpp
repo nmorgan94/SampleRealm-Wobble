@@ -2,6 +2,16 @@
 #include "PluginEditor.h"
 #include "ui/ModulatableSlider.h"
 
+namespace
+{
+    constexpr int topBarHeight   = 70;
+    constexpr int edgeMargin     = 10;
+    constexpr int titleWidth     = 550;
+    constexpr int meterWidth     = 90;
+    constexpr int presetBarWidth = 180;
+    constexpr float titleHeight  = 52.0f;
+}
+
 //==============================================================================
 AudioPluginAudioProcessorEditor::AudioPluginAudioProcessorEditor (AudioPluginAudioProcessor& p)
     : AudioProcessorEditor (&p), processorRef (p)
@@ -58,26 +68,28 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 {
     g.fillAll (juce::Colours::black);
     
-    auto bounds = getLocalBounds();
-    
+    auto titleArea = getLocalBounds().removeFromTop(topBarHeight)
+                         .withTrimmedLeft(edgeMargin)
+                         .withWidth(titleWidth);
+
     g.setColour (juce::Colour(0xff00ff00));
-    g.setFont (CustomLookAndFeel::orbitronBold().withHeight(24.0f));
-    auto titleArea = bounds.removeFromTop(70).withTrimmedLeft(10);
-    g.drawText ("SampleRealm: Modulate", titleArea, juce::Justification::centredLeft);
+    g.setFont (CustomLookAndFeel::orbitronBold().withHeight(titleHeight));
+    g.drawFittedText ("SampleRealm: Modulate", titleArea, juce::Justification::centredLeft, 1);
 }
 
 void AudioPluginAudioProcessorEditor::resized()
 {
     auto bounds = getLocalBounds();
     
-    auto topBar = bounds.removeFromTop(70);
-    topBar.removeFromRight(10);
+    auto topBar = bounds.removeFromTop(topBarHeight);
+    topBar.removeFromRight(edgeMargin);
     if (masterMeter != nullptr)
-        masterMeter->setBounds(topBar.removeFromRight(90).reduced(0, 6));
+        masterMeter->setBounds(topBar.removeFromRight(meterWidth).reduced(0, 6));
 
-    topBar.removeFromLeft(290);
+    topBar.removeFromLeft(edgeMargin + titleWidth);
     if (presetBar != nullptr)
-        presetBar->setBounds(topBar.removeFromLeft(180).reduced(0, 20));
+        presetBar->setBounds(topBar.withSizeKeepingCentre(presetBarWidth, topBar.getHeight())
+                                   .reduced(0, 20));
     
     // Padding
     bounds.reduce(10, 5);
