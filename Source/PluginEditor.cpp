@@ -10,6 +10,8 @@ namespace
     constexpr int meterWidth     = 90;
     constexpr int presetBarWidth = 180;
     constexpr float titleHeight  = 52.0f;
+    constexpr int versionHeight  = 12;
+    constexpr int versionGap     = 2;
 }
 
 //==============================================================================
@@ -75,6 +77,13 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
     g.setColour (juce::Colour(0xff00ff00));
     g.setFont (CustomLookAndFeel::orbitronBold().withHeight(titleHeight));
     g.drawFittedText ("SampleRealm: Modulate", titleArea, juce::Justification::centredLeft, 1);
+
+    auto versionArea = titleArea.removeFromBottom(versionHeight).translated(0, versionGap);
+
+    g.setColour (juce::Colour(0xff00ff41).withAlpha(0.4f));
+    g.setFont (CustomLookAndFeel::orbitronRegular().withPointHeight(9.0f));
+    g.drawText ("v" + juce::String (JucePlugin_VersionString), versionArea,
+                juce::Justification::centredLeft);
 }
 
 void AudioPluginAudioProcessorEditor::resized()
