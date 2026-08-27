@@ -76,7 +76,7 @@ void AudioPluginAudioProcessorEditor::paint (juce::Graphics& g)
 
     g.setColour (juce::Colour(0xff00ff00));
     g.setFont (CustomLookAndFeel::orbitronBold().withHeight(titleHeight));
-    g.drawFittedText ("SampleRealm: Modulate", titleArea, juce::Justification::centredLeft, 1);
+    g.drawFittedText ("SampleRealm: MODULATE", titleArea, juce::Justification::centredLeft, 1);
 
     auto versionArea = titleArea.removeFromBottom(versionHeight).translated(0, versionGap);
 
